@@ -1,5 +1,5 @@
 import type {PlayerId} from "./state";
-import type {CardId, Color} from "./card";
+import type {CardId, Color} from "./cards/card";
 
 type JoinAction = {
     type: "join";

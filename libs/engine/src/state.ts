@@ -1,4 +1,4 @@
-import type {Card, Color} from "./card";
+import type {Card, Color} from "./cards/card";
 
 type Hand = Card[]
 
