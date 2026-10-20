@@ -66,8 +66,9 @@ When a **penalty stack** is pending, see §6.
 On your turn, do exactly one of:
 - **Play** a playable card, or
 - **Draw** one card. You may draw even if you hold a playable card.
-  - If the drawn card is playable, you **may** play it immediately.
-  - Otherwise, or if you choose not to play it, your **turn ends**.
+  - After drawing, you may **play any playable card** from your hand (not only the drawn one), or **pass**. You cannot draw again.
+  - If you have no playable card after drawing, your **turn ends** automatically.
+  - If you pass, your **turn ends**.
 
 ## 5. Action Cards
 
@@ -113,8 +114,12 @@ On your turn, do exactly one of:
 
 The window also closes when a penalty is given, or if the player's hand goes above one card for any other reason.
 
-### False calls
-- Typing `uno` when **no** UNO window is open (outside the 3-second head start) is a **false call**. The caller draws a **4-card penalty**.
+### Multiple windows and who a call affects
+Several UNO windows can be open at once. When a player types `uno`:
+1. If they have their own open window, the call **saves them** and does nothing else.
+2. Otherwise, it **catches every** other player whose window is past the 3-second head start. Each of them draws 4.
+3. If windows are open but all are still within their head start, the call is **ignored**.
+4. If no windows are open at all, it's a **false call**: the caller draws 4.
 
 ## 9. Winning
 
