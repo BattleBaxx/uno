@@ -1,0 +1,29 @@
+{
+  "name": "uno",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BattleBaxx/uno.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/BattleBaxx/uno/issues"
+  },
+  "homepage": "https://github.com/BattleBaxx/uno#readme",
+  "workspaces": [
+    "libs/engine",
+    "libs/protocol",
+    "apps/server"
+  ],
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
