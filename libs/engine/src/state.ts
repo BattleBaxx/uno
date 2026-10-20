@@ -32,6 +32,9 @@ type LobbyState = {
 type PlayingState = {
     phase: "playing";
 
+    // Seeded random generator's current value. Advances on every shuffle.
+    rngState: number;
+
     // The last card in each array represents the top card of the pile.
     drawPile: Card[];
     discardPile: Card[];
