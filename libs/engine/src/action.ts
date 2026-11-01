@@ -12,7 +12,7 @@ export type StartAction = {
     seed: number;
 }
 
-type PlayAction = {
+export type PlayAction = {
     type: "play";
     playerId: PlayerId;
     cardId: CardId;
@@ -20,12 +20,12 @@ type PlayAction = {
     now: number;
 }
 
-type DrawAction = {
+export type DrawAction = {
     type: "draw";
     playerId: PlayerId;
 };
 
-type PassAction = {
+export type PassAction = {
     type: "pass";
     playerId: PlayerId;
 };

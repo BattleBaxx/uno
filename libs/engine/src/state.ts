@@ -52,7 +52,7 @@ export type PlayingState = {
     unoWindows: UnoWindow[];
 }
 
-type FinishedState = {
+export type FinishedState = {
     phase: "finished";
     winner: PlayerId;
 };

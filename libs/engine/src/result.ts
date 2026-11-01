@@ -7,7 +7,13 @@ export type ActionError =
     | "alreadyJoined"
     | "roomFull"
     | "notHost"
-    | "notEnoughPlayers";
+    | "notEnoughPlayers"
+    | "notYourTurn"
+    | "cardNotInHand"
+    | "cardNotPlayable"
+    | "colorRequired"
+    | "alreadyDrawn"
+    | "mustDrawFirst";
 
 export type Result<S = GameState> =
     | {ok: true; state: S}

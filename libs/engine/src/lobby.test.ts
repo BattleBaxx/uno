@@ -142,6 +142,6 @@ describe("start", () => {
 describe("apply", () => {
     it("reports actions that are not written yet", () => {
         const game = startedGame(["alice", "bob"]);
-        expect(apply(game, {type: "pass", playerId: "alice"})).toEqual({ok: false, error: "notImplemented"});
+        expect(apply(game, {type: "callUno", playerId: "alice", now: 0})).toEqual({ok: false, error: "notImplemented"});
     });
 });
