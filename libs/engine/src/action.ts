@@ -1,12 +1,12 @@
 import type {PlayerId} from "./state";
 import type {CardId, Color} from "./cards/card";
 
-type JoinAction = {
+export type JoinAction = {
     type: "join";
     playerId: PlayerId;
 }
 
-type StartAction = {
+export type StartAction = {
     type: "start";
     playerId: PlayerId;
     seed: number;

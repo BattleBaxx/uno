@@ -18,18 +18,18 @@ type UnoWindow = {
     openedAt: number;
 }
 
-type Settings = {
+export type Settings = {
     handSize: number;
 }
 
-type LobbyState = {
+export type LobbyState = {
     phase: "lobby";
     players: PlayerId[];
     host: PlayerId;
     settings: Settings;
 };
 
-type PlayingState = {
+export type PlayingState = {
     phase: "playing";
 
     // Seeded random generator's current value. Advances on every shuffle.
