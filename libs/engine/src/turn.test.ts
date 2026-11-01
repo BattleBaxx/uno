@@ -9,6 +9,7 @@ const skip = (id: number, color: Color): Card => ({id, kind: "skip", color});
 const reverse = (id: number, color: Color): Card => ({id, kind: "reverse", color});
 const drawTwo = (id: number, color: Color): Card => ({id, kind: "drawTwo", color});
 const wild = (id: number): Card => ({id, kind: "wild"});
+const wildDrawFour = (id: number): Card => ({id, kind: "wildDrawFour"});
 
 function game(overrides: Partial<PlayingState> = {}): PlayingState {
     return {
@@ -166,11 +167,119 @@ describe("skip and reverse", () => {
         expect(after.direction).toBe(1);
         expect(after.currentPlayerIndex).toBe(0);
     });
+});
 
-    it("+2 is not implemented yet", () => {
-        expect(apply(aliceHolds(drawTwo(1, "red"), 3), {type: "play", playerId: "alice", cardId: 1, now: 0})).toEqual({
+describe("penalty stacks", () => {
+    const stackGame = (overrides: Partial<PlayingState> = {}) =>
+        game({
+            players: [
+                {id: "alice", hand: [drawTwo(1, "red"), wildDrawFour(2), num(3, "red", 1)]},
+                {id: "bob", hand: [drawTwo(11, "blue"), wildDrawFour(12), num(13, "red", 2)]},
+                {id: "carol", hand: [num(21, "green", 8)]},
+            ],
+            drawPile: [num(90, "blue", 1), num(91, "blue", 2), num(92, "blue", 3), num(93, "blue", 4), num(94, "blue", 5)],
+            ...overrides,
+        });
+
+    it("+2 starts a stack of 2 and passes the turn", () => {
+        const after = unwrap(apply(stackGame(), {type: "play", playerId: "alice", cardId: 1, now: 0}));
+        expect(after.pendingDraw).toBe(2);
+        expect(after.currentPlayerIndex).toBe(1);
+    });
+
+    it("+2 stacks on +2 across colors", () => {
+        const first = unwrap(apply(stackGame(), {type: "play", playerId: "alice", cardId: 1, now: 0}));
+        const second = unwrap(apply(first, {type: "play", playerId: "bob", cardId: 11, now: 0}));
+        expect(second.pendingDraw).toBe(4);
+        expect(second.currentColor).toBe("blue");
+        expect(second.currentPlayerIndex).toBe(2);
+    });
+
+    it("the player who cannot stack draws the whole stack and loses their turn", () => {
+        const first = unwrap(apply(stackGame(), {type: "play", playerId: "alice", cardId: 1, now: 0}));
+        const second = unwrap(apply(first, {type: "play", playerId: "bob", cardId: 11, now: 0}));
+        const after = unwrap(apply(second, {type: "draw", playerId: "carol"}));
+        expect(handIds(after, 2)).toEqual([21, 94, 93, 92, 91]);
+        expect(after.pendingDraw).toBe(0);
+        expect(after.currentPlayerIndex).toBe(0);
+    });
+
+    it("only allows stacking or drawing while a stack is pending", () => {
+        const first = unwrap(apply(stackGame(), {type: "play", playerId: "alice", cardId: 1, now: 0}));
+        expect(apply(first, {type: "play", playerId: "bob", cardId: 13, now: 0})).toEqual({
             ok: false,
-            error: "notImplemented",
+            error: "cardNotPlayable",
+        });
+        expect(apply(first, {type: "pass", playerId: "bob"})).toEqual({ok: false, error: "mustDrawFirst"});
+    });
+
+    it("does not allow +4 on a +2 stack", () => {
+        const first = unwrap(apply(stackGame(), {type: "play", playerId: "alice", cardId: 1, now: 0}));
+        expect(apply(first, {type: "play", playerId: "bob", cardId: 12, color: "red", now: 0})).toEqual({
+            ok: false,
+            error: "cardNotPlayable",
+        });
+    });
+
+    it("does not allow +2 on a +4 stack", () => {
+        const first = unwrap(apply(stackGame(), {type: "play", playerId: "alice", cardId: 2, color: "blue", now: 0}));
+        expect(apply(first, {type: "play", playerId: "bob", cardId: 11, now: 0})).toEqual({
+            ok: false,
+            error: "cardNotPlayable",
+        });
+    });
+
+    it("+4 needs a color", () => {
+        expect(apply(stackGame(), {type: "play", playerId: "alice", cardId: 2, now: 0})).toEqual({
+            ok: false,
+            error: "colorRequired",
+        });
+    });
+
+    it("+4 sets the color and starts a stack of 4", () => {
+        const after = unwrap(apply(stackGame(), {type: "play", playerId: "alice", cardId: 2, color: "green", now: 0}));
+        expect(after.currentColor).toBe("green");
+        expect(after.pendingDraw).toBe(4);
+    });
+
+    it("+4 stacks on +4 and the last player's color wins", () => {
+        const first = unwrap(apply(stackGame(), {type: "play", playerId: "alice", cardId: 2, color: "green", now: 0}));
+        const second = unwrap(apply(first, {type: "play", playerId: "bob", cardId: 12, color: "yellow", now: 0}));
+        expect(second.pendingDraw).toBe(8);
+        expect(second.currentColor).toBe("yellow");
+    });
+
+    it("after a +4 stack is drawn, the next player follows the chosen color", () => {
+        const state = stackGame({
+            players: [
+                {id: "alice", hand: [wildDrawFour(2), num(3, "red", 1)]},
+                {id: "bob", hand: [num(13, "red", 2)]},
+                {id: "carol", hand: [num(21, "green", 8), num(22, "red", 9)]},
+            ],
+        });
+        const played = unwrap(apply(state, {type: "play", playerId: "alice", cardId: 2, color: "green", now: 0}));
+        const drawn = unwrap(apply(played, {type: "draw", playerId: "bob"}));
+        expect(drawn.currentPlayerIndex).toBe(2);
+        expect(apply(drawn, {type: "play", playerId: "carol", cardId: 22, now: 0})).toEqual({
+            ok: false,
+            error: "cardNotPlayable",
+        });
+        expect(apply(drawn, {type: "play", playerId: "carol", cardId: 21, now: 0}).ok).toBe(true);
+    });
+
+    it("a +2 on a +2 whose stack was already drawn starts a new stack", () => {
+        const state = stackGame({discardPile: [drawTwo(80, "green")], currentColor: "green", pendingDraw: 0});
+        const after = unwrap(apply(state, {type: "play", playerId: "alice", cardId: 1, now: 0}));
+        expect(after.pendingDraw).toBe(2);
+    });
+
+    it("a +2 can be the winning card", () => {
+        const state = stackGame({
+            players: [{id: "alice", hand: [drawTwo(1, "red")]}, {id: "bob", hand: [num(13, "red", 2)]}],
+        });
+        expect(apply(state, {type: "play", playerId: "alice", cardId: 1, now: 0})).toEqual({
+            ok: true,
+            state: {phase: "finished", winner: "alice"},
         });
     });
 });

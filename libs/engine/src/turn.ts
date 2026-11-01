@@ -17,11 +17,8 @@ export function play(state: PlayingState, action: PlayAction): Result {
     if (!isPlayable(card, state)) {
         return fail("cardNotPlayable");
     }
-    if (card.kind === "drawTwo" || card.kind === "wildDrawFour") {
-        return fail("notImplemented");
-    }
 
-    const color = card.kind === "wild" ? action.color : card.color;
+    const color = card.kind === "wild" || card.kind === "wildDrawFour" ? action.color : card.color;
     if (!color) {
         return fail("colorRequired");
     }
@@ -49,6 +46,10 @@ export function play(state: PlayingState, action: PlayAction): Result {
                 return ok(endTurn(after, 2));
             }
             return ok(endTurn({...after, direction: after.direction === 1 ? -1 : 1}));
+        case "drawTwo":
+            return ok(endTurn({...after, pendingDraw: state.pendingDraw + 2}));
+        case "wildDrawFour":
+            return ok(endTurn({...after, pendingDraw: state.pendingDraw + 4}));
     }
 }
 
