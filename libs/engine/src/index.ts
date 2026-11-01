@@ -1,4 +1,5 @@
 export {apply} from "./apply";
+export {createDeck} from "./cards/deck";
 export {
     createLobby,
     DEFAULT_HAND_SIZE,

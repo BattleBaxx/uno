@@ -22,7 +22,8 @@
   "workspaces": [
     "libs/engine",
     "libs/protocol",
-    "apps/server"
+    "apps/server",
+    "apps/client"
   ],
   "devDependencies": {
     "typescript": "^7.0.2",
