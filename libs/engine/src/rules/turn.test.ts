@@ -75,7 +75,7 @@ describe("play", () => {
     });
 
     it("cannot be done before the game starts", () => {
-        const lobby = {phase: "lobby" as const, players: ["alice"], host: "alice", settings: {handSize: 7}};
+        const lobby = {phase: "lobby" as const, players: ["alice"], host: "alice", settings: {handSize: 7}, startsAt: null};
         expect(apply(lobby, {type: "play", playerId: "alice", cardId: 1, now: 0})).toEqual({
             ok: false,
             error: "wrongPhase",

@@ -1,5 +1,5 @@
 import type {LobbyState, Player, PlayerId, PlayingState, Settings} from "../state";
-import type {JoinAction, StartAction} from "../action";
+import type {CountdownTimeoutAction, JoinAction, StartAction} from "../action";
 import {createDeck, shuffle} from "../cards/deck";
 import {nextRandom} from "../cards/random";
 import {fail, ok, type Result} from "../result";
@@ -9,6 +9,7 @@ export const MAX_PLAYERS = 4;
 export const MIN_HAND_SIZE = 1;
 export const MAX_HAND_SIZE = 20;
 export const DEFAULT_HAND_SIZE = 7;
+export const START_COUNTDOWN_MS = 3_000;
 
 export function createLobby(hostId: PlayerId, settings: Settings): Result<LobbyState> {
     const {handSize} = settings;
@@ -16,7 +17,7 @@ export function createLobby(hostId: PlayerId, settings: Settings): Result<LobbyS
         return fail("invalidHandSize");
     }
 
-    return ok({phase: "lobby", players: [hostId], host: hostId, settings: {handSize}});
+    return ok({phase: "lobby", players: [hostId], host: hostId, settings: {handSize}, startsAt: null});
 }
 
 export function join(state: LobbyState, action: JoinAction): Result {
@@ -36,6 +37,21 @@ export function start(state: LobbyState, action: StartAction): Result {
     }
     if (state.players.length < MIN_PLAYERS) {
         return fail("notEnoughPlayers");
+    }
+    if (state.startsAt !== null) {
+        return fail("alreadyStarting");
+    }
+
+    const startsAt = action.now + START_COUNTDOWN_MS;
+    return ok({...state, startsAt}, [{type: "countdownStarted", startsAt}]);
+}
+
+export function countdownTimeout(state: LobbyState, action: CountdownTimeoutAction): Result {
+    if (state.startsAt === null || action.now < state.startsAt) {
+        return ok(state);
+    }
+    if (state.players.length < MIN_PLAYERS) {
+        return ok({...state, startsAt: null}, [{type: "countdownCancelled"}]);
     }
 
     const shuffled = shuffle(createDeck(), action.seed);

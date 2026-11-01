@@ -6,6 +6,7 @@ export {
     MAX_PLAYERS,
     MIN_HAND_SIZE,
     MIN_PLAYERS,
+    START_COUNTDOWN_MS,
 } from "./rules/lobby";
 export {UNO_HEAD_START_MS, UNO_PENALTY, UNO_WINDOW_MS} from "./rules/uno";
 

@@ -7,6 +7,8 @@ export type GameEvent =
     | {type: "joined"; playerId: PlayerId}
     | {type: "removed"; playerId: PlayerId}
     | {type: "hostChanged"; playerId: PlayerId}
+    | {type: "countdownStarted"; startsAt: number}
+    | {type: "countdownCancelled"}
     | {type: "started"}
     | {type: "played"; playerId: PlayerId; card: Card; color: Color}
     | {type: "drew"; playerId: PlayerId; count: number; reason: DrawReason}

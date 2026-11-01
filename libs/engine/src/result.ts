@@ -8,6 +8,7 @@ export type ActionError =
     | "roomFull"
     | "notHost"
     | "notEnoughPlayers"
+    | "alreadyStarting"
     | "notYourTurn"
     | "cardNotInHand"
     | "cardNotPlayable"

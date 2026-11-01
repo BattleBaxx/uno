@@ -3,6 +3,7 @@ import type {LobbyState, PlayerId, PlayingState} from "../state";
 import {shuffle} from "../cards/deck";
 import type {GameEvent} from "../events";
 import {fail, ok, type Result} from "../result";
+import {MIN_PLAYERS} from "./lobby";
 
 export function removePlayer(state: LobbyState | PlayingState, action: RemovePlayerAction): Result {
     return state.phase === "lobby"
@@ -22,7 +23,11 @@ function removeFromLobby(state: LobbyState, playerId: PlayerId): Result {
     if (host !== state.host) {
         events.push({type: "hostChanged", playerId: host});
     }
-    return ok({...state, players, host}, events);
+    const cancelCountdown = state.startsAt !== null && players.length < MIN_PLAYERS;
+    if (cancelCountdown) {
+        events.push({type: "countdownCancelled"});
+    }
+    return ok({...state, players, host, startsAt: cancelCountdown ? null : state.startsAt}, events);
 }
 
 function removeFromGame(state: PlayingState, playerId: PlayerId): Result {

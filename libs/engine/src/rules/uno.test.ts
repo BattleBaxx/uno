@@ -196,7 +196,7 @@ describe("playing the last card", () => {
     });
 
     it("cannot be done in the lobby", () => {
-        const lobby = {phase: "lobby" as const, players: ["alice"], host: "alice", settings: {handSize: 7}};
+        const lobby = {phase: "lobby" as const, players: ["alice"], host: "alice", settings: {handSize: 7}, startsAt: null};
         expect(apply(lobby, {type: "callUno", playerId: "alice", now: 0})).toEqual({ok: false, error: "wrongPhase"});
     });
 });

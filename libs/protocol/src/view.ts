@@ -8,6 +8,7 @@ export type LobbyView = {
     players: PlayerId[];
     host: PlayerId;
     settings: Settings;
+    startsAt: number | null;
 };
 
 export type OtherPlayer = {
@@ -46,6 +47,7 @@ export function viewFor(state: GameState, playerId: PlayerId): PlayerView {
                 players: state.players,
                 host: state.host,
                 settings: state.settings,
+                startsAt: state.startsAt,
             };
         case "playing":
             return {

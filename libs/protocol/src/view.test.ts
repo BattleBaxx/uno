@@ -1,5 +1,5 @@
 import {describe, it, expect} from "vitest";
-import {apply, createLobby, type GameState, type PlayingState, type Result} from "@uno/engine";
+import {apply, createLobby, START_COUNTDOWN_MS, type GameState, type PlayingState, type Result} from "@uno/engine";
 import {viewFor, type PlayingView} from "./view";
 
 function unwrap(result: Result): GameState {
@@ -21,7 +21,8 @@ function lobby(): GameState {
 }
 
 function playing(): PlayingState {
-    const state = unwrap(apply(lobby(), {type: "start", playerId: "alice", seed: 42}));
+    const counting = unwrap(apply(lobby(), {type: "start", playerId: "alice", now: 0}));
+    const state = unwrap(apply(counting, {type: "countdownTimeout", seed: 42, now: START_COUNTDOWN_MS}));
     if (state.phase !== "playing") {
         throw new Error("expected a started game");
     }
@@ -44,6 +45,7 @@ describe("viewFor in the lobby", () => {
             players: ["alice", "bob", "carol"],
             host: "alice",
             settings: {handSize: 7},
+            startsAt: null,
         });
     });
 });

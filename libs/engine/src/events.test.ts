@@ -12,7 +12,7 @@ function eventsOf(result: Result): GameEvent[] {
     return result.events;
 }
 
-const lobby: LobbyState = {phase: "lobby", players: ["alice", "bob"], host: "alice", settings: {handSize: 7}};
+const lobby: LobbyState = {phase: "lobby", players: ["alice", "bob"], host: "alice", settings: {handSize: 7}, startsAt: null};
 
 const aliceOnOneCard = () =>
     game({
@@ -30,8 +30,15 @@ describe("events", () => {
         expect(eventsOf(apply(lobby, {type: "join", playerId: "carol"}))).toEqual([{type: "joined", playerId: "carol"}]);
     });
 
-    it("start", () => {
-        expect(eventsOf(apply(lobby, {type: "start", playerId: "alice", seed: 1}))).toEqual([{type: "started"}]);
+    it("start begins the countdown", () => {
+        expect(eventsOf(apply(lobby, {type: "start", playerId: "alice", now: 1000}))).toEqual([
+            {type: "countdownStarted", startsAt: 4000},
+        ]);
+    });
+
+    it("the countdown ending starts the game", () => {
+        const counting = {...lobby, startsAt: 4000};
+        expect(eventsOf(apply(counting, {type: "countdownTimeout", seed: 1, now: 4000}))).toEqual([{type: "started"}]);
     });
 
     it("play, with the card and the color it leaves", () => {

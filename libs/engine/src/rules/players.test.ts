@@ -3,7 +3,13 @@ import {apply} from "../apply";
 import type {LobbyState, PlayingState} from "../state";
 import {drawTwo, game, num, unwrap} from "./fixtures";
 
-const lobby = (): LobbyState => ({phase: "lobby", players: ["alice", "bob", "carol"], host: "alice", settings: {handSize: 7}});
+const lobby = (): LobbyState => ({
+    phase: "lobby",
+    players: ["alice", "bob", "carol"],
+    host: "alice",
+    settings: {handSize: 7},
+    startsAt: null,
+});
 
 const currentId = (state: PlayingState) => state.players[state.currentPlayerIndex]!.id;
 
@@ -44,6 +50,21 @@ describe("removePlayer in the lobby", () => {
         const alone: LobbyState = {...lobby(), players: ["alice"]};
         const result = apply(alone, {type: "removePlayer", playerId: "alice"});
         expect(result).toEqual({ok: true, state: {...alone, players: []}, events: [{type: "removed", playerId: "alice"}]});
+    });
+
+    it("cancels a running countdown when fewer than 2 players are left", () => {
+        const counting: LobbyState = {...lobby(), players: ["alice", "bob"], startsAt: 3000};
+        expect(apply(counting, {type: "removePlayer", playerId: "bob"})).toEqual({
+            ok: true,
+            state: {...counting, players: ["alice"], startsAt: null},
+            events: [{type: "removed", playerId: "bob"}, {type: "countdownCancelled"}],
+        });
+    });
+
+    it("keeps a running countdown when enough players are left", () => {
+        const counting: LobbyState = {...lobby(), startsAt: 3000};
+        const result = apply(counting, {type: "removePlayer", playerId: "carol"});
+        expect(result.ok && result.state.phase === "lobby" && result.state.startsAt).toBe(3000);
     });
 
     it("rejects a player who is not in the room", () => {

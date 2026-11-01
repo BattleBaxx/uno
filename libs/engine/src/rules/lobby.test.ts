@@ -1,6 +1,6 @@
 import {describe, it, expect} from "vitest";
 import {apply} from "../apply";
-import {createLobby, MAX_PLAYERS} from "./lobby";
+import {createLobby, MAX_PLAYERS, START_COUNTDOWN_MS} from "./lobby";
 import type {Result} from "../result";
 import type {GameState, LobbyState, PlayingState} from "../state";
 
@@ -22,7 +22,8 @@ function lobbyWith(players: string[], handSize = 7): LobbyState {
 
 function startedGame(players: string[], seed = 42, handSize = 7): PlayingState {
     const lobby = lobbyWith(players, handSize);
-    return unwrap(apply(lobby, {type: "start", playerId: players[0]!, seed})) as PlayingState;
+    const counting = unwrap(apply(lobby, {type: "start", playerId: players[0]!, now: 0}));
+    return unwrap(apply(counting, {type: "countdownTimeout", seed, now: START_COUNTDOWN_MS})) as PlayingState;
 }
 
 describe("createLobby", () => {
@@ -74,23 +75,66 @@ describe("join", () => {
     });
 });
 
+describe("countdown", () => {
+    it("start begins a 3 second countdown instead of dealing", () => {
+        const lobby = lobbyWith(["alice", "bob"]);
+        const counting = unwrap(apply(lobby, {type: "start", playerId: "alice", now: 1000}));
+        expect(counting).toEqual({...lobby, startsAt: 1000 + START_COUNTDOWN_MS});
+    });
+
+    it("cannot be started twice", () => {
+        const counting = unwrap(apply(lobbyWith(["alice", "bob"]), {type: "start", playerId: "alice", now: 0}));
+        expect(apply(counting, {type: "start", playerId: "alice", now: 500})).toEqual({ok: false, error: "alreadyStarting"});
+    });
+
+    it("does nothing if the timeout arrives early", () => {
+        const counting = unwrap(apply(lobbyWith(["alice", "bob"]), {type: "start", playerId: "alice", now: 0}));
+        expect(apply(counting, {type: "countdownTimeout", seed: 1, now: START_COUNTDOWN_MS - 1})).toEqual({
+            ok: true,
+            state: counting,
+            events: [],
+        });
+    });
+
+    it("does nothing if no countdown is running", () => {
+        const lobby = lobbyWith(["alice", "bob"]);
+        expect(apply(lobby, {type: "countdownTimeout", seed: 1, now: 10_000})).toEqual({ok: true, state: lobby, events: []});
+    });
+
+    it("still lets players join while it runs, and deals them in", () => {
+        const counting = unwrap(apply(lobbyWith(["alice", "bob"]), {type: "start", playerId: "alice", now: 0}));
+        const joined = unwrap(apply(counting, {type: "join", playerId: "carol"}));
+        const game = unwrap(apply(joined, {type: "countdownTimeout", seed: 1, now: START_COUNTDOWN_MS})) as PlayingState;
+        expect(game.players.map((p) => p.id)).toEqual(["alice", "bob", "carol"]);
+    });
+
+    it("is cancelled at the end if fewer than 2 players are left", () => {
+        const lonely: LobbyState = {...lobbyWith(["alice"]), startsAt: 3000};
+        expect(apply(lonely, {type: "countdownTimeout", seed: 1, now: 3000})).toEqual({
+            ok: true,
+            state: {...lonely, startsAt: null},
+            events: [{type: "countdownCancelled"}],
+        });
+    });
+});
+
 describe("start", () => {
     it("can only be done by the host", () => {
         const lobby = lobbyWith(["alice", "bob"]);
-        expect(apply(lobby, {type: "start", playerId: "bob", seed: 1})).toEqual({ok: false, error: "notHost"});
+        expect(apply(lobby, {type: "start", playerId: "bob", now: 0})).toEqual({ok: false, error: "notHost"});
     });
 
     it("needs at least 2 players", () => {
         const lobby = lobbyWith(["alice"]);
-        expect(apply(lobby, {type: "start", playerId: "alice", seed: 1})).toEqual({
+        expect(apply(lobby, {type: "start", playerId: "alice", now: 0})).toEqual({
             ok: false,
             error: "notEnoughPlayers",
         });
     });
 
-    it("cannot start twice", () => {
+    it("cannot start once the game is running", () => {
         const game = startedGame(["alice", "bob"]);
-        expect(apply(game, {type: "start", playerId: "alice", seed: 1})).toEqual({ok: false, error: "wrongPhase"});
+        expect(apply(game, {type: "start", playerId: "alice", now: 0})).toEqual({ok: false, error: "wrongPhase"});
     });
 
     it("deals handSize cards to every player, in join order", () => {

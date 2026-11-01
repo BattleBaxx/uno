@@ -30,6 +30,10 @@ The max of 20 guarantees the deal fits the deck: 4 players × 20 = 80 of the 108
 
 ### Starting
 - Only the host can start the game, and only when the room has at least 2 players.
+- Starting begins a **3-second countdown**. The cards are dealt when it ends.
+  - Players can still join during the countdown, and they're dealt in.
+  - If fewer than 2 players are left, the countdown is **cancelled**.
+  - The host can't start a second countdown while one is running.
 
 ## 2. The Deck
 
@@ -150,3 +154,4 @@ All timers are kept by the server.
 | UNO head start | 3 s | A player plays down to one card | Other players' calls are accepted |
 | UNO window | 30 s | Same | Penalty of 4 cards (if no one called) |
 | Reconnect grace | 30 s | A player disconnects | Player is removed (§10) |
+| Start countdown | 3 s | The host starts the game | Cards are dealt (§3), or cancelled if fewer than 2 players are left |

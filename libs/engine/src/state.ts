@@ -27,6 +27,7 @@ export type LobbyState = {
     players: PlayerId[];
     host: PlayerId;
     settings: Settings;
+    startsAt: number | null;
 };
 
 export type PlayingState = {

@@ -9,7 +9,7 @@ export type JoinAction = {
 export type StartAction = {
     type: "start";
     playerId: PlayerId;
-    seed: number;
+    now: number;
 }
 
 export type PlayAction = {
@@ -49,6 +49,12 @@ export type RemovePlayerAction = {
     playerId: PlayerId;
 }
 
-type ServerAction = UnoTimeoutAction | RemovePlayerAction;
+export type CountdownTimeoutAction = {
+    type: "countdownTimeout";
+    seed: number;
+    now: number;
+}
+
+type ServerAction = UnoTimeoutAction | RemovePlayerAction | CountdownTimeoutAction;
 
 export type Action = PlayerAction | ServerAction;

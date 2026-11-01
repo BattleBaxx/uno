@@ -1,6 +1,6 @@
 import type {GameState} from "./state";
 import type {Action} from "./action";
-import {join, start} from "./rules/lobby";
+import {countdownTimeout, join, start} from "./rules/lobby";
 import {draw, pass, play} from "./rules/turn";
 import {callUno, unoTimeout} from "./rules/uno";
 import {removePlayer} from "./rules/players";
@@ -12,6 +12,8 @@ export function apply(state: GameState, action: Action): Result {
             return state.phase === "lobby" ? join(state, action) : fail("wrongPhase");
         case "start":
             return state.phase === "lobby" ? start(state, action) : fail("wrongPhase");
+        case "countdownTimeout":
+            return state.phase === "lobby" ? countdownTimeout(state, action) : fail("wrongPhase");
 
         case "play":
             return state.phase === "playing" ? play(state, action) : fail("wrongPhase");
