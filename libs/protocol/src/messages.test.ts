@@ -1,5 +1,5 @@
 import {describe, it, expect} from "vitest";
-import {CreateRoomRequest, isUnoCall, parseClientMessage, RoomKey} from "./messages";
+import {CreateRoomRequest, isUnoCall, parseClientMessage, PlayerName, RoomKey} from "./messages";
 
 describe("parseClientMessage", () => {
     it("accepts every valid message", () => {
@@ -51,6 +51,11 @@ describe("chat", () => {
         expect(parseClientMessage(JSON.stringify({type: "chat", text}))).toEqual({type: "chat", text});
     });
 
+    it("rejects terminal control characters that could mess up other players' screens", () => {
+        expect(parseClientMessage(JSON.stringify({type: "chat", text: "hi\u001b[2Jbye"}))).toBeNull();
+        expect(parseClientMessage(JSON.stringify({type: "chat", text: "line\nbreak"}))).toBeNull();
+    });
+
     it("rejects empty and too-long messages", () => {
         expect(parseClientMessage('{"type":"chat","text":"   "}')).toBeNull();
         expect(parseClientMessage(JSON.stringify({type: "chat", text: "a".repeat(201)}))).toBeNull();
@@ -65,6 +70,20 @@ describe("chat", () => {
     it("does not treat other messages as an UNO call", () => {
         for (const text of ["uno!", "unos", "uno uno", "i said uno", ""]) {
             expect(isUnoCall(text)).toBe(false);
+        }
+    });
+});
+
+describe("PlayerName", () => {
+    it("accepts and trims normal names, including non-English letters", () => {
+        expect(PlayerName.parse("  alice ")).toBe("alice");
+        expect(PlayerName.parse("Søren")).toBe("Søren");
+        expect(PlayerName.parse("a".repeat(16))).toBe("a".repeat(16));
+    });
+
+    it("rejects empty, too long and control-character names", () => {
+        for (const name of ["", "   ", "a".repeat(17), "evil\u001b[31m", "tab\tname"]) {
+            expect(PlayerName.safeParse(name).success).toBe(false);
         }
     });
 });

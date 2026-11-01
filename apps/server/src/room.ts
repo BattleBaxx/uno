@@ -1,8 +1,9 @@
 import {apply, createLobby, UNO_WINDOW_MS, type Action, type GameEvent, type GameState, type PlayerId} from "@uno/engine";
-import {CreateRoomRequest, isUnoCall, parseClientMessage, viewFor, type ServerMessage} from "@uno/protocol";
+import {CreateRoomRequest, isUnoCall, parseClientMessage, viewFor, type Names, type ServerMessage} from "@uno/protocol";
 import {toAction} from "./actions";
 import {closingTime, expiredDisconnects, nextDeadline, NO_TIMERS, type RoomTimers} from "./deadlines";
 import type {Env} from "./index";
+import {resolveName} from "./names";
 
 type Tokens = Record<string, PlayerId>;
 type ChatEntry = {from: PlayerId; text: string};
@@ -16,6 +17,7 @@ export class GameRoom {
     private tokens: Tokens = {};
     private chat: ChatEntry[] = [];
     private timers: RoomTimers = NO_TIMERS;
+    private names: Names = {};
 
     constructor(ctx: DurableObjectState, _env: Env) {
         this.ctx = ctx;
@@ -24,6 +26,7 @@ export class GameRoom {
             this.tokens = (await ctx.storage.get<Tokens>("tokens")) ?? {};
             this.chat = (await ctx.storage.get<ChatEntry[]>("chat")) ?? [];
             this.timers = (await ctx.storage.get<RoomTimers>("timers")) ?? NO_TIMERS;
+            this.names = (await ctx.storage.get<Names>("names")) ?? {};
         });
     }
 
@@ -38,7 +41,7 @@ export class GameRoom {
         if (request.headers.get("Upgrade") !== "websocket") {
             return new Response("expected a websocket", {status: 426});
         }
-        return this.connect(this.state, url.searchParams.get("token"));
+        return this.connect(this.state, url.searchParams.get("token"), url.searchParams.get("name"));
     }
 
     webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): void {
@@ -89,7 +92,7 @@ export class GameRoom {
         for (const playerId of expiredDisconnects(this.timers, now)) {
             this.setDisconnected(playerId, null);
             if (this.act({type: "removePlayer", playerId})) {
-                this.forgetTokens(playerId);
+                this.forgetPlayer(playerId);
             }
         }
 
@@ -115,7 +118,7 @@ export class GameRoom {
         return Response.json({token});
     }
 
-    private connect(state: GameState, token: string | null): Response {
+    private connect(state: GameState, token: string | null, name: string | null): Response {
         let playerId: PlayerId;
         let events: GameEvent[] = [];
 
@@ -127,14 +130,25 @@ export class GameRoom {
             playerId = known;
         } else {
             playerId = crypto.randomUUID();
+        }
+
+        const named = resolveName(this.names, playerId, name);
+        if (!named.ok) {
+            return Response.json({error: named.error}, {status: named.error === "nameTaken" ? 409 : 400});
+        }
+
+        if (token === null) {
             const joined = apply(state, {type: "join", playerId});
             if (!joined.ok) {
                 return Response.json({error: joined.error}, {status: 409});
             }
             token = crypto.randomUUID();
             this.saveTokens({...this.tokens, [token]: playerId});
+            this.saveNames(named.names);
             this.saveState(joined.state);
             events = joined.events;
+        } else if (named.names !== this.names) {
+            this.saveNames(named.names);
         }
 
         const pair = new WebSocketPair();
@@ -200,7 +214,7 @@ export class GameRoom {
             if (events.length > 0) {
                 send(ws, {type: "events", events});
             }
-            send(ws, {type: "view", view: viewFor(state, playerId)});
+            send(ws, {type: "view", view: viewFor(state, playerId, this.names)});
         }
     }
 
@@ -224,6 +238,7 @@ export class GameRoom {
         this.tokens = {};
         this.chat = [];
         this.timers = NO_TIMERS;
+        this.names = {};
         void this.ctx.storage.deleteAlarm();
         void this.ctx.storage.deleteAll();
     }
@@ -244,8 +259,14 @@ export class GameRoom {
         void this.ctx.storage.put("tokens", tokens);
     }
 
-    private forgetTokens(playerId: PlayerId): void {
+    private forgetPlayer(playerId: PlayerId): void {
         this.saveTokens(Object.fromEntries(Object.entries(this.tokens).filter(([, id]) => id !== playerId)));
+        this.saveNames(Object.fromEntries(Object.entries(this.names).filter(([id]) => id !== playerId)));
+    }
+
+    private saveNames(names: Names): void {
+        this.names = names;
+        void this.ctx.storage.put("names", names);
     }
 
     private setDisconnected(playerId: PlayerId, at: number | null): void {

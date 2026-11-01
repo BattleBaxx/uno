@@ -13,8 +13,13 @@ import type {PlayerView} from "./view";
 export const ROOM_KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ROOM_KEY_LENGTH = 6;
 export const CHAT_MAX_LENGTH = 200;
+export const NAME_MAX_LENGTH = 16;
+
+const NO_CONTROL_CHARACTERS = /^[^\p{Cc}\p{Cf}]*$/u;
 
 export const RoomKey = z.string().regex(new RegExp(`^[${ROOM_KEY_ALPHABET}]{${ROOM_KEY_LENGTH}}$`));
+
+export const PlayerName = z.string().trim().min(1).max(NAME_MAX_LENGTH).regex(NO_CONTROL_CHARACTERS);
 
 const ColorSchema: z.ZodType<Color> = z.enum(["red", "yellow", "green", "blue"]);
 
@@ -31,7 +36,10 @@ export const ClientMessage = z.discriminatedUnion("type", [
     z.object({type: z.literal("draw")}),
     z.object({type: z.literal("pass")}),
     z.object({type: z.literal("callUno")}),
-    z.object({type: z.literal("chat"), text: z.string().trim().min(1).max(CHAT_MAX_LENGTH)}),
+    z.object({
+        type: z.literal("chat"),
+        text: z.string().trim().min(1).max(CHAT_MAX_LENGTH).regex(NO_CONTROL_CHARACTERS),
+    }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;
 

@@ -2,9 +2,12 @@ import type {Card, Color, GameState, PlayerId, PlayingState, Settings} from "@un
 
 export const VISIBLE_CARD_COUNT_MAX = 3;
 
+export type Names = Record<PlayerId, string>;
+
 export type LobbyView = {
     phase: "lobby";
     you: PlayerId;
+    names: Names;
     players: PlayerId[];
     host: PlayerId;
     settings: Settings;
@@ -19,6 +22,7 @@ export type OtherPlayer = {
 export type PlayingView = {
     phase: "playing";
     you: PlayerId;
+    names: Names;
     hand: Card[];
     players: OtherPlayer[];
     currentPlayer: PlayerId;
@@ -33,17 +37,19 @@ export type PlayingView = {
 export type FinishedView = {
     phase: "finished";
     you: PlayerId;
+    names: Names;
     winner: PlayerId;
 };
 
 export type PlayerView = LobbyView | PlayingView | FinishedView;
 
-export function viewFor(state: GameState, playerId: PlayerId): PlayerView {
+export function viewFor(state: GameState, playerId: PlayerId, names: Names): PlayerView {
     switch (state.phase) {
         case "lobby":
             return {
                 phase: "lobby",
                 you: playerId,
+                names,
                 players: state.players,
                 host: state.host,
                 settings: state.settings,
@@ -53,6 +59,7 @@ export function viewFor(state: GameState, playerId: PlayerId): PlayerView {
             return {
                 phase: "playing",
                 you: playerId,
+                names,
                 hand: state.players.find((p) => p.id === playerId)?.hand ?? [],
                 players: state.players.map((p) => ({
                     id: p.id,
@@ -67,6 +74,6 @@ export function viewFor(state: GameState, playerId: PlayerId): PlayerView {
                 drawPileCount: state.drawPile.length,
             };
         case "finished":
-            return {phase: "finished", you: playerId, winner: state.winner};
+            return {phase: "finished", you: playerId, names, winner: state.winner};
     }
 }

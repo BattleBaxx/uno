@@ -29,8 +29,10 @@ function playing(): PlayingState {
     return state;
 }
 
+const names = {alice: "Alice", bob: "Bob", carol: "Carol"};
+
 function playingViewFor(state: PlayingState, playerId: string): PlayingView {
-    const view = viewFor(state, playerId);
+    const view = viewFor(state, playerId, names);
     if (view.phase !== "playing") {
         throw new Error("expected a playing view");
     }
@@ -39,9 +41,10 @@ function playingViewFor(state: PlayingState, playerId: string): PlayingView {
 
 describe("viewFor in the lobby", () => {
     it("shows the players, host and settings", () => {
-        expect(viewFor(lobby(), "bob")).toEqual({
+        expect(viewFor(lobby(), "bob", names)).toEqual({
             phase: "lobby",
             you: "bob",
+            names,
             players: ["alice", "bob", "carol"],
             host: "alice",
             settings: {handSize: 7},
@@ -94,7 +97,7 @@ describe("viewFor during a game", () => {
 
     it("does not leak other players' cards anywhere in the message", () => {
         const state = playing();
-        const json = JSON.stringify(viewFor(state, "bob"));
+        const json = JSON.stringify(viewFor(state, "bob", names));
         for (const card of [...state.players[0]!.hand, ...state.players[2]!.hand, ...state.drawPile]) {
             expect(json).not.toContain(`"id":${card.id},`);
         }
@@ -112,6 +115,10 @@ describe("viewFor during a game", () => {
         expect(view.drawPileCount).toBe(108 - 21 - 1);
     });
 
+    it("includes everyone's display name", () => {
+        expect(playingViewFor(playing(), "bob").names).toEqual(names);
+    });
+
     it("gives every player a different hand", () => {
         const state = playing();
         const hands = ["alice", "bob", "carol"].map((id) => playingViewFor(state, id).hand.map((c) => c.id));
@@ -121,9 +128,10 @@ describe("viewFor during a game", () => {
 
 describe("viewFor after the game", () => {
     it("shows the winner", () => {
-        expect(viewFor({phase: "finished", winner: "carol"}, "bob")).toEqual({
+        expect(viewFor({phase: "finished", winner: "carol"}, "bob", names)).toEqual({
             phase: "finished",
             you: "bob",
+            names,
             winner: "carol",
         });
     });
