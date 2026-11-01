@@ -3,6 +3,7 @@ export {
     ClientMessage,
     CreateRoomRequest,
     isUnoCall,
+    JOIN_REFUSED_CLOSE_CODE,
     NAME_MAX_LENGTH,
     parseClientMessage,
     PlayerName,
@@ -10,6 +11,6 @@ export {
     ROOM_KEY_LENGTH,
     RoomKey,
 } from "./messages";
-export type {CreateRoomResponse, ServerMessage} from "./messages";
+export type {CreateRoomResponse, JoinError, ServerMessage} from "./messages";
 export {VISIBLE_CARD_COUNT_MAX, viewFor} from "./view";
 export type {FinishedView, LobbyView, Names, OtherPlayer, PlayerView, PlayingView} from "./view";

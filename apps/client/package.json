@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "tsx src/main.tsx",
     "demo": "tsx src/demo.tsx",
     "test": "vitest run",
     "typecheck": "tsc -p ."

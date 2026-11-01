@@ -88,4 +88,4 @@ function Demo() {
     );
 }
 
-render(<Demo />, {alternateScreen: true});
+render(<Demo />, {alternateScreen: true, incrementalRendering: true});

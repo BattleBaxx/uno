@@ -58,10 +58,14 @@ export function isUnoCall(text: string): boolean {
     return text.trim().toLowerCase() === "uno";
 }
 
+export const JOIN_REFUSED_CLOSE_CODE = 4000;
+
+export type JoinError = "roomNotFound" | "unknownToken" | "nameRequired" | "invalidName" | "nameTaken" | ActionError;
+
 export type ServerMessage =
     | {type: "welcome"; roomKey: string; playerId: PlayerId; token: string}
     | {type: "view"; view: PlayerView}
     | {type: "events"; events: GameEvent[]}
     | {type: "chat"; from: PlayerId; text: string}
     | {type: "presence"; playerId: PlayerId; connected: boolean}
-    | {type: "error"; error: ActionError | "invalidMessage"};
+    | {type: "error"; error: JoinError | "invalidMessage"};

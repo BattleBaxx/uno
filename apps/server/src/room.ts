@@ -1,5 +1,14 @@
 import {apply, createLobby, UNO_WINDOW_MS, type Action, type GameEvent, type GameState, type PlayerId} from "@uno/engine";
-import {CreateRoomRequest, isUnoCall, parseClientMessage, viewFor, type Names, type ServerMessage} from "@uno/protocol";
+import {
+    CreateRoomRequest,
+    isUnoCall,
+    JOIN_REFUSED_CLOSE_CODE,
+    parseClientMessage,
+    viewFor,
+    type JoinError,
+    type Names,
+    type ServerMessage,
+} from "@uno/protocol";
 import {toAction} from "./actions";
 import {closingTime, expiredDisconnects, nextDeadline, NO_TIMERS, type RoomTimers} from "./deadlines";
 import type {Env} from "./index";
@@ -35,10 +44,11 @@ export class GameRoom {
         if (request.method === "POST" && url.pathname === "/init") {
             return this.init(await request.json());
         }
+        const isWebSocket = request.headers.get("Upgrade") === "websocket";
         if (!this.state) {
-            return new Response("room not found", {status: 404});
+            return isWebSocket ? refuse("roomNotFound") : new Response("room not found", {status: 404});
         }
-        if (request.headers.get("Upgrade") !== "websocket") {
+        if (!isWebSocket) {
             return new Response("expected a websocket", {status: 426});
         }
         return this.connect(this.state, url.searchParams.get("token"), url.searchParams.get("name"));
@@ -125,7 +135,7 @@ export class GameRoom {
         if (token !== null) {
             const known = this.tokens[token];
             if (!known) {
-                return new Response("unknown token", {status: 403});
+                return refuse("unknownToken");
             }
             playerId = known;
         } else {
@@ -134,13 +144,13 @@ export class GameRoom {
 
         const named = resolveName(this.names, playerId, name);
         if (!named.ok) {
-            return Response.json({error: named.error}, {status: named.error === "nameTaken" ? 409 : 400});
+            return refuse(named.error);
         }
 
         if (token === null) {
             const joined = apply(state, {type: "join", playerId});
             if (!joined.ok) {
-                return Response.json({error: joined.error}, {status: 409});
+                return refuse(joined.error);
             }
             token = crypto.randomUUID();
             this.saveTokens({...this.tokens, [token]: playerId});
@@ -292,6 +302,15 @@ export class GameRoom {
             void this.ctx.storage.setAlarm(deadline);
         }
     }
+}
+
+function refuse(error: JoinError): Response {
+    const pair = new WebSocketPair();
+    const server = pair[1];
+    server.accept();
+    send(server, {type: "error", error});
+    server.close(JOIN_REFUSED_CLOSE_CODE, error);
+    return new Response(null, {status: 101, webSocket: pair[0]});
 }
 
 function isMember(state: GameState, playerId: PlayerId): boolean {
