@@ -1,6 +1,7 @@
 import type {RemovePlayerAction} from "../action";
 import type {LobbyState, PlayerId, PlayingState} from "../state";
 import {shuffle} from "../cards/deck";
+import type {GameEvent} from "../events";
 import {fail, ok, type Result} from "../result";
 
 export function removePlayer(state: LobbyState | PlayingState, action: RemovePlayerAction): Result {
@@ -17,7 +18,11 @@ function removeFromLobby(state: LobbyState, playerId: PlayerId): Result {
     const players = state.players.filter((id) => id !== playerId);
     const newHost = players[0];
     const host = playerId === state.host && newHost !== undefined ? newHost : state.host;
-    return ok({...state, players, host});
+    const events: GameEvent[] = [{type: "removed", playerId}];
+    if (host !== state.host) {
+        events.push({type: "hostChanged", playerId: host});
+    }
+    return ok({...state, players, host}, events);
 }
 
 function removeFromGame(state: PlayingState, playerId: PlayerId): Result {
@@ -30,7 +35,10 @@ function removeFromGame(state: PlayingState, playerId: PlayerId): Result {
     const players = state.players.filter((p) => p.id !== playerId);
     const lastPlayer = players[0];
     if (players.length === 1 && lastPlayer) {
-        return ok({phase: "finished", winner: lastPlayer.id});
+        return ok({phase: "finished", winner: lastPlayer.id}, [
+            {type: "removed", playerId},
+            {type: "won", playerId: lastPlayer.id},
+        ]);
     }
 
     const shuffled = shuffle([...state.drawPile, ...removed.hand], state.rngState);
@@ -45,7 +53,7 @@ function removeFromGame(state: PlayingState, playerId: PlayerId): Result {
         currentPlayerIndex: indexAfterRemoval(state, removedIndex, players.length),
         pendingDraw: wasTheirTurn ? 0 : state.pendingDraw,
         hasDrawn: wasTheirTurn ? false : state.hasDrawn,
-    });
+    }, [{type: "removed", playerId}]);
 }
 
 function indexAfterRemoval(state: PlayingState, removedIndex: number, remaining: number): number {

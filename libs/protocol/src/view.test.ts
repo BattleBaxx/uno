@@ -59,18 +59,32 @@ describe("viewFor during a game", () => {
     it("only shows how many cards the other players have", () => {
         const view = playingViewFor(playing(), "bob");
         expect(view.players).toEqual([
-            {id: "alice", cardCount: 7},
+            {id: "alice", cardCount: null},
             {id: "bob", cardCount: 7},
-            {id: "carol", cardCount: 7},
+            {id: "carol", cardCount: null},
         ]);
     });
 
-    it("never includes the draw pile, the discard pile, other hands or the random state", () => {
+    it("shows other players' counts once they have 3 cards or fewer", () => {
+        const state = playing();
+        const small: PlayingState = {
+            ...state,
+            players: state.players.map((p, i) => ({...p, hand: p.hand.slice(0, [4, 7, 3][i])})),
+        };
+        expect(playingViewFor(small, "bob").players).toEqual([
+            {id: "alice", cardCount: null},
+            {id: "bob", cardCount: 7},
+            {id: "carol", cardCount: 3},
+        ]);
+    });
+
+    it("never includes the draw pile, the discard pile, other hands, UNO windows or the random state", () => {
         const view = playingViewFor(playing(), "bob");
         const keys = Object.keys(view);
         expect(keys).not.toContain("drawPile");
         expect(keys).not.toContain("discardPile");
         expect(keys).not.toContain("rngState");
+        expect(keys).not.toContain("unoWindows");
         for (const other of view.players) {
             expect(Object.keys(other)).toEqual(["id", "cardCount"]);
         }
@@ -94,7 +108,6 @@ describe("viewFor during a game", () => {
         expect(view.pendingDraw).toBe(0);
         expect(view.hasDrawn).toBe(false);
         expect(view.drawPileCount).toBe(108 - 21 - 1);
-        expect(view.unoWindows).toEqual([]);
     });
 
     it("gives every player a different hand", () => {

@@ -1,4 +1,6 @@
-import type {Card, Color, GameState, PlayerId, PlayingState, Settings, UnoWindow} from "@uno/engine";
+import type {Card, Color, GameState, PlayerId, PlayingState, Settings} from "@uno/engine";
+
+export const VISIBLE_CARD_COUNT_MAX = 3;
 
 export type LobbyView = {
     phase: "lobby";
@@ -10,7 +12,7 @@ export type LobbyView = {
 
 export type OtherPlayer = {
     id: PlayerId;
-    cardCount: number;
+    cardCount: number | null;
 };
 
 export type PlayingView = {
@@ -25,7 +27,6 @@ export type PlayingView = {
     pendingDraw: number;
     hasDrawn: boolean;
     drawPileCount: number;
-    unoWindows: UnoWindow[];
 };
 
 export type FinishedView = {
@@ -51,7 +52,10 @@ export function viewFor(state: GameState, playerId: PlayerId): PlayerView {
                 phase: "playing",
                 you: playerId,
                 hand: state.players.find((p) => p.id === playerId)?.hand ?? [],
-                players: state.players.map((p) => ({id: p.id, cardCount: p.hand.length})),
+                players: state.players.map((p) => ({
+                    id: p.id,
+                    cardCount: p.id === playerId || p.hand.length <= VISIBLE_CARD_COUNT_MAX ? p.hand.length : null,
+                })),
                 currentPlayer: state.players[state.currentPlayerIndex]!.id,
                 direction: state.direction,
                 topCard: state.discardPile.at(-1)!,
@@ -59,7 +63,6 @@ export function viewFor(state: GameState, playerId: PlayerId): PlayerView {
                 pendingDraw: state.pendingDraw,
                 hasDrawn: state.hasDrawn,
                 drawPileCount: state.drawPile.length,
-                unoWindows: state.unoWindows,
             };
         case "finished":
             return {phase: "finished", you: playerId, winner: state.winner};

@@ -21,18 +21,29 @@ const fourPlayers = (overrides: Partial<PlayingState> = {}) =>
 describe("removePlayer in the lobby", () => {
     it("removes the player", () => {
         const result = apply(lobby(), {type: "removePlayer", playerId: "bob"});
-        expect(result).toEqual({ok: true, state: {...lobby(), players: ["alice", "carol"]}});
+        expect(result).toEqual({
+            ok: true,
+            state: {...lobby(), players: ["alice", "carol"]},
+            events: [{type: "removed", playerId: "bob"}],
+        });
     });
 
     it("hands the host role to the next player in join order", () => {
         const result = apply(lobby(), {type: "removePlayer", playerId: "alice"});
-        expect(result).toEqual({ok: true, state: {...lobby(), players: ["bob", "carol"], host: "bob"}});
+        expect(result).toEqual({
+            ok: true,
+            state: {...lobby(), players: ["bob", "carol"], host: "bob"},
+            events: [
+                {type: "removed", playerId: "alice"},
+                {type: "hostChanged", playerId: "bob"},
+            ],
+        });
     });
 
     it("leaves an empty lobby when the last player goes", () => {
         const alone: LobbyState = {...lobby(), players: ["alice"]};
         const result = apply(alone, {type: "removePlayer", playerId: "alice"});
-        expect(result).toEqual({ok: true, state: {...alone, players: []}});
+        expect(result).toEqual({ok: true, state: {...alone, players: []}, events: [{type: "removed", playerId: "alice"}]});
     });
 
     it("rejects a player who is not in the room", () => {
@@ -106,6 +117,10 @@ describe("removePlayer during a game", () => {
         expect(apply(state, {type: "removePlayer", playerId: "bob"})).toEqual({
             ok: true,
             state: {phase: "finished", winner: "alice"},
+            events: [
+                {type: "removed", playerId: "bob"},
+                {type: "won", playerId: "alice"},
+            ],
         });
     });
 

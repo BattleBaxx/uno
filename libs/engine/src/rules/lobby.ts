@@ -27,7 +27,7 @@ export function join(state: LobbyState, action: JoinAction): Result {
         return fail("roomFull");
     }
 
-    return ok({...state, players: [...state.players, action.playerId]});
+    return ok({...state, players: [...state.players, action.playerId]}, [{type: "joined", playerId: action.playerId}]);
 }
 
 export function start(state: LobbyState, action: StartAction): Result {
@@ -71,5 +71,5 @@ export function start(state: LobbyState, action: StartAction): Result {
         pendingDraw: 0,
         unoWindows: [],
     };
-    return ok(playing);
+    return ok(playing, [{type: "started"}]);
 }

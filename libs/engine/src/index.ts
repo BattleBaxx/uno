@@ -22,3 +22,4 @@ export type {
 } from "./state";
 export type {Action} from "./action";
 export type {ActionError, Result} from "./result";
+export type {DrawReason, GameEvent} from "./events";

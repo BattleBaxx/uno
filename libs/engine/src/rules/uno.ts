@@ -1,6 +1,7 @@
 import type {CallUnoAction, UnoTimeoutAction} from "../action";
 import type {PlayerId, PlayingState, UnoWindow} from "../state";
 import {giveCards} from "../cards/piles";
+import {drewEvent, type GameEvent} from "../events";
 import {fail, ok, type Result} from "../result";
 
 export const UNO_HEAD_START_MS = 3_000;
@@ -14,21 +15,28 @@ export function callUno(state: PlayingState, action: CallUnoAction): Result {
     }
 
     if (hasOpenWindow(state, caller)) {
-        return ok({...state, unoWindows: state.unoWindows.filter((w) => w.playerId !== caller)});
+        const unoWindows = state.unoWindows.filter((w) => w.playerId !== caller);
+        return ok({...state, unoWindows}, [{type: "calledUno", playerId: caller}]);
     }
 
     const caught = state.unoWindows
         .filter((w) => action.now - w.openedAt >= UNO_HEAD_START_MS)
         .map((w) => w.playerId);
     if (caught.length > 0) {
-        return ok(penalize(state, caught, UNO_PENALTY));
+        const after = penalize(state, caught, UNO_PENALTY);
+        const events = caught.flatMap((id): GameEvent[] => [
+            {type: "caught", playerId: id, by: caller},
+            drewEvent(state, after, id, "unoPenalty"),
+        ]);
+        return ok(after, events);
     }
 
     if (state.unoWindows.length > 0) {
         return ok(state);
     }
 
-    return ok(penalize(state, [caller], UNO_PENALTY));
+    const after = penalize(state, [caller], UNO_PENALTY);
+    return ok(after, [drewEvent(state, after, caller, "falseCall")]);
 }
 
 export function unoTimeout(state: PlayingState, action: UnoTimeoutAction): Result {
@@ -37,7 +45,11 @@ export function unoTimeout(state: PlayingState, action: UnoTimeoutAction): Resul
         return ok(state);
     }
 
-    return ok(penalize(state, [action.playerId], UNO_PENALTY));
+    const after = penalize(state, [action.playerId], UNO_PENALTY);
+    return ok(after, [
+        {type: "unoTimedOut", playerId: action.playerId},
+        drewEvent(state, after, action.playerId, "unoPenalty"),
+    ]);
 }
 
 export function penalize(state: PlayingState, playerIds: PlayerId[], count: number): PlayingState {

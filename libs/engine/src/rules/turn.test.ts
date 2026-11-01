@@ -64,7 +64,14 @@ describe("play", () => {
             players: [{id: "alice", hand: [num(1, "red", 7)]}, {id: "bob", hand: [num(11, "blue", 4)]}],
         });
         const result = apply(state, {type: "play", playerId: "alice", cardId: 1, now: 0});
-        expect(result).toEqual({ok: true, state: {phase: "finished", winner: "alice"} satisfies FinishedState});
+        expect(result).toEqual({
+            ok: true,
+            state: {phase: "finished", winner: "alice"} satisfies FinishedState,
+            events: [
+                {type: "played", playerId: "alice", card: num(1, "red", 7), color: "red"},
+                {type: "won", playerId: "alice"},
+            ],
+        });
     });
 
     it("cannot be done before the game starts", () => {
@@ -239,6 +246,10 @@ describe("penalty stacks", () => {
         expect(apply(state, {type: "play", playerId: "alice", cardId: 1, now: 0})).toEqual({
             ok: true,
             state: {phase: "finished", winner: "alice"},
+            events: [
+                {type: "played", playerId: "alice", card: drawTwo(1, "red"), color: "red"},
+                {type: "won", playerId: "alice"},
+            ],
         });
     });
 });

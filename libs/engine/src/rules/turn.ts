@@ -2,6 +2,7 @@ import type {Card} from "../cards/card";
 import type {DrawAction, PassAction, PlayAction} from "../action";
 import type {Player, PlayingState} from "../state";
 import {giveCards} from "../cards/piles";
+import {drewEvent, type GameEvent} from "../events";
 import {fail, ok, type Result} from "../result";
 import {hasOpenWindow, openWindow, penalize, UNO_PENALTY} from "./uno";
 
@@ -28,9 +29,15 @@ export function play(state: PlayingState, action: PlayAction): Result {
     if (hand.length === 0) {
         if (hasOpenWindow(state, player.id)) {
             const penalized = penalize(state, [player.id], UNO_PENALTY + state.pendingDraw);
-            return ok(endTurn({...penalized, pendingDraw: 0}));
+            return ok(endTurn({...penalized, pendingDraw: 0}), [
+                {type: "missedUno", playerId: player.id},
+                drewEvent(state, penalized, player.id, "unoPenalty"),
+            ]);
         }
-        return ok({phase: "finished", winner: player.id});
+        return ok({phase: "finished", winner: player.id}, [
+            {type: "played", playerId: player.id, card, color},
+            {type: "won", playerId: player.id},
+        ]);
     }
 
     const after: PlayingState = {
@@ -40,22 +47,23 @@ export function play(state: PlayingState, action: PlayAction): Result {
         currentColor: color,
         unoWindows: hand.length === 1 ? openWindow(state, player.id, action.now) : state.unoWindows,
     };
+    const events: GameEvent[] = [{type: "played", playerId: player.id, card, color}];
 
     switch (card.kind) {
         case "number":
         case "wild":
-            return ok(endTurn(after));
+            return ok(endTurn(after), events);
         case "skip":
-            return ok(endTurn(after, 2));
+            return ok(endTurn(after, 2), events);
         case "reverse":
             if (state.players.length === 2) {
-                return ok(endTurn(after, 2));
+                return ok(endTurn(after, 2), events);
             }
-            return ok(endTurn({...after, direction: after.direction === 1 ? -1 : 1}));
+            return ok(endTurn({...after, direction: after.direction === 1 ? -1 : 1}), events);
         case "drawTwo":
-            return ok(endTurn({...after, pendingDraw: state.pendingDraw + 2}));
+            return ok(endTurn({...after, pendingDraw: state.pendingDraw + 2}), events);
         case "wildDrawFour":
-            return ok(endTurn({...after, pendingDraw: state.pendingDraw + 4}));
+            return ok(endTurn({...after, pendingDraw: state.pendingDraw + 4}), events);
     }
 }
 
@@ -69,12 +77,14 @@ export function draw(state: PlayingState, action: DrawAction): Result {
     }
 
     if (state.pendingDraw > 0) {
-        return ok(endTurn({...giveCards(state, player.id, state.pendingDraw), pendingDraw: 0}));
+        const after = giveCards(state, player.id, state.pendingDraw);
+        return ok(endTurn({...after, pendingDraw: 0}), [drewEvent(state, after, player.id, "stack")]);
     }
 
     const drawn: PlayingState = {...giveCards(state, player.id, 1), hasDrawn: true};
     const canPlay = currentPlayer(drawn).hand.some((c) => isPlayable(c, drawn));
-    return ok(canPlay ? drawn : endTurn(drawn));
+    const events = [drewEvent(state, drawn, player.id, "choice")];
+    return ok(canPlay ? drawn : endTurn(drawn), events);
 }
 
 export function pass(state: PlayingState, action: PassAction): Result {
@@ -85,7 +95,7 @@ export function pass(state: PlayingState, action: PassAction): Result {
         return fail("mustDrawFirst");
     }
 
-    return ok(endTurn(state));
+    return ok(endTurn(state), [{type: "passed", playerId: action.playerId}]);
 }
 
 export function isPlayable(card: Card, state: PlayingState): boolean {

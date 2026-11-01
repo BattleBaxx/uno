@@ -56,7 +56,7 @@ describe("callUno", () => {
 
     it("ignores other players during the 3 second head start", () => {
         const state = onOneCard();
-        expect(apply(state, {type: "callUno", playerId: "bob", now: 3999})).toEqual({ok: true, state});
+        expect(apply(state, {type: "callUno", playerId: "bob", now: 3999})).toEqual({ok: true, state, events: []});
     });
 
     it("catches the player once the head start is over", () => {
@@ -139,12 +139,12 @@ describe("unoTimeout", () => {
 
     it("does nothing if the 30 seconds are not up yet", () => {
         const state = onOneCard();
-        expect(apply(state, {type: "unoTimeout", playerId: "alice", now: 30_999})).toEqual({ok: true, state});
+        expect(apply(state, {type: "unoTimeout", playerId: "alice", now: 30_999})).toEqual({ok: true, state, events: []});
     });
 
     it("does nothing if the window was already closed", () => {
         const state = onOneCard({unoWindows: []});
-        expect(apply(state, {type: "unoTimeout", playerId: "alice", now: 60_000})).toEqual({ok: true, state});
+        expect(apply(state, {type: "unoTimeout", playerId: "alice", now: 60_000})).toEqual({ok: true, state, events: []});
     });
 });
 
@@ -154,6 +154,10 @@ describe("playing the last card", () => {
         expect(apply(called, {type: "play", playerId: "alice", cardId: 1, now: 2000})).toEqual({
             ok: true,
             state: {phase: "finished", winner: "alice"},
+            events: [
+                {type: "played", playerId: "alice", card: num(1, "red", 7), color: "red"},
+                {type: "won", playerId: "alice"},
+            ],
         });
     });
 

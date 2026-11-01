@@ -5,12 +5,14 @@ import {
     MIN_HAND_SIZE,
     type ActionError,
     type Color,
+    type GameEvent,
     type PlayerId,
 } from "@uno/engine";
 import type {PlayerView} from "./view";
 
 export const ROOM_KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ROOM_KEY_LENGTH = 6;
+export const CHAT_MAX_LENGTH = 200;
 
 export const RoomKey = z.string().regex(new RegExp(`^[${ROOM_KEY_ALPHABET}]{${ROOM_KEY_LENGTH}}$`));
 
@@ -29,6 +31,7 @@ export const ClientMessage = z.discriminatedUnion("type", [
     z.object({type: z.literal("draw")}),
     z.object({type: z.literal("pass")}),
     z.object({type: z.literal("callUno")}),
+    z.object({type: z.literal("chat"), text: z.string().trim().min(1).max(CHAT_MAX_LENGTH)}),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;
 
@@ -43,7 +46,13 @@ export function parseClientMessage(raw: string): ClientMessage | null {
     return result.success ? result.data : null;
 }
 
+export function isUnoCall(text: string): boolean {
+    return text.trim().toLowerCase() === "uno";
+}
+
 export type ServerMessage =
     | {type: "welcome"; roomKey: string; playerId: PlayerId; token: string}
     | {type: "view"; view: PlayerView}
+    | {type: "events"; events: GameEvent[]}
+    | {type: "chat"; from: PlayerId; text: string}
     | {type: "error"; error: ActionError | "invalidMessage"};

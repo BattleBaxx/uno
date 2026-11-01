@@ -1,5 +1,5 @@
 import {describe, it, expect} from "vitest";
-import {CreateRoomRequest, parseClientMessage, RoomKey} from "./messages";
+import {CreateRoomRequest, isUnoCall, parseClientMessage, RoomKey} from "./messages";
 
 describe("parseClientMessage", () => {
     it("accepts every valid message", () => {
@@ -38,6 +38,34 @@ describe("parseClientMessage", () => {
     it("drops fields the client is not allowed to send", () => {
         const parsed = parseClientMessage('{"type":"draw","playerId":"bob","now":0,"seed":1}');
         expect(parsed).toEqual({type: "draw"});
+    });
+});
+
+describe("chat", () => {
+    it("accepts a message and trims it", () => {
+        expect(parseClientMessage('{"type":"chat","text":"  lol nice  "}')).toEqual({type: "chat", text: "lol nice"});
+    });
+
+    it("accepts up to 200 characters", () => {
+        const text = "a".repeat(200);
+        expect(parseClientMessage(JSON.stringify({type: "chat", text}))).toEqual({type: "chat", text});
+    });
+
+    it("rejects empty and too-long messages", () => {
+        expect(parseClientMessage('{"type":"chat","text":"   "}')).toBeNull();
+        expect(parseClientMessage(JSON.stringify({type: "chat", text: "a".repeat(201)}))).toBeNull();
+    });
+
+    it("treats a message of just uno, in any case and with spaces, as an UNO call", () => {
+        for (const text of ["uno", "UNO", " Uno "]) {
+            expect(isUnoCall(text)).toBe(true);
+        }
+    });
+
+    it("does not treat other messages as an UNO call", () => {
+        for (const text of ["uno!", "unos", "uno uno", "i said uno", ""]) {
+            expect(isUnoCall(text)).toBe(false);
+        }
     });
 });
 
