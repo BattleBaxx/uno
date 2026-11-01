@@ -2,14 +2,19 @@
   "name": "@uno/server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261019.1"
   },
   "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@uno/engine": "*",
+    "@uno/protocol": "*"
+  }
 }

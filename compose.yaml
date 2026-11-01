@@ -1,0 +1,13 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    working_dir: /app
+    command: ["dev", "/app/apps/server", "--host", "0.0.0.0", "--port", "8787", "--logs"]
+    ports:
+      - "8787:8787"
+    volumes:
+      - .:/app
+    security_opt:
+      - label=disable

@@ -23,7 +23,7 @@ export const CreateRoomRequest = z.object({
 });
 export type CreateRoomRequest = z.infer<typeof CreateRoomRequest>;
 
-export type CreateRoomResponse = {roomKey: string};
+export type CreateRoomResponse = {roomKey: string; token: string};
 
 export const ClientMessage = z.discriminatedUnion("type", [
     z.object({type: z.literal("start")}),
