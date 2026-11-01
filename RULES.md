@@ -155,3 +155,4 @@ All timers are kept by the server.
 | UNO window | 30 s | Same | Penalty of 4 cards (if no one called) |
 | Reconnect grace | 30 s | A player disconnects | Player is removed (§10) |
 | Start countdown | 3 s | The host starts the game | Cards are dealt (§3), or cancelled if fewer than 2 players are left |
+| Room cleanup | 10 min | The game finishes | The room and its data are deleted |

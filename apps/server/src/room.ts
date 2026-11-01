@@ -1,7 +1,7 @@
 import {apply, createLobby, UNO_WINDOW_MS, type Action, type GameEvent, type GameState, type PlayerId} from "@uno/engine";
 import {CreateRoomRequest, isUnoCall, parseClientMessage, viewFor, type ServerMessage} from "@uno/protocol";
 import {toAction} from "./actions";
-import {nextDeadline} from "./deadlines";
+import {closingTime, expiredDisconnects, nextDeadline, NO_TIMERS, type RoomTimers} from "./deadlines";
 import type {Env} from "./index";
 
 type Tokens = Record<string, PlayerId>;
@@ -15,6 +15,7 @@ export class GameRoom {
     private state: GameState | undefined;
     private tokens: Tokens = {};
     private chat: ChatEntry[] = [];
+    private timers: RoomTimers = NO_TIMERS;
 
     constructor(ctx: DurableObjectState, _env: Env) {
         this.ctx = ctx;
@@ -22,6 +23,7 @@ export class GameRoom {
             this.state = await ctx.storage.get<GameState>("state");
             this.tokens = (await ctx.storage.get<Tokens>("tokens")) ?? {};
             this.chat = (await ctx.storage.get<ChatEntry[]>("chat")) ?? [];
+            this.timers = (await ctx.storage.get<RoomTimers>("timers")) ?? NO_TIMERS;
         });
     }
 
@@ -57,8 +59,21 @@ export class GameRoom {
         this.act(toAction(parsed, playerId, Date.now()), ws);
     }
 
+    webSocketClose(ws: WebSocket): void {
+        this.disconnect(ws);
+    }
+
+    webSocketError(ws: WebSocket): void {
+        this.disconnect(ws);
+    }
+
     alarm(): void {
         const now = Date.now();
+
+        if (this.timers.closesAt !== null && this.timers.closesAt <= now) {
+            this.closeRoom();
+            return;
+        }
 
         if (this.state?.phase === "lobby" && this.state.startsAt !== null && this.state.startsAt <= now) {
             this.act({type: "countdownTimeout", seed: randomSeed(), now});
@@ -68,6 +83,13 @@ export class GameRoom {
             const expired = this.state.unoWindows.filter((w) => w.openedAt + UNO_WINDOW_MS <= now);
             for (const window of expired) {
                 this.act({type: "unoTimeout", playerId: window.playerId, now});
+            }
+        }
+
+        for (const playerId of expiredDisconnects(this.timers, now)) {
+            this.setDisconnected(playerId, null);
+            if (this.act({type: "removePlayer", playerId})) {
+                this.forgetTokens(playerId);
             }
         }
 
@@ -88,6 +110,7 @@ export class GameRoom {
         }
 
         this.saveTokens({[token]: hostId});
+        this.setDisconnected(hostId, Date.now());
         this.saveState(lobby.state);
         return Response.json({token});
     }
@@ -124,24 +147,47 @@ export class GameRoom {
         for (const entry of this.chat) {
             send(server, {type: "chat", ...entry});
         }
+
+        if (playerId in this.timers.disconnectedAt) {
+            this.setDisconnected(playerId, null);
+            this.scheduleAlarm();
+            this.sendToAll({type: "presence", playerId, connected: true});
+        }
         this.broadcast(events);
 
         return new Response(null, {status: 101, webSocket: client});
     }
 
-    private act(action: Action, from?: WebSocket): void {
-        if (!this.state) {
+    private disconnect(ws: WebSocket): void {
+        const {playerId} = ws.deserializeAttachment() as Attachment;
+        closeQuietly(ws, "closed");
+
+        const stillConnected = this.ctx
+            .getWebSockets()
+            .some((other) => other !== ws && (other.deserializeAttachment() as Attachment).playerId === playerId);
+        if (stillConnected || !this.state || !isMember(this.state, playerId)) {
             return;
+        }
+
+        this.setDisconnected(playerId, Date.now());
+        this.scheduleAlarm();
+        this.sendToAll({type: "presence", playerId, connected: false});
+    }
+
+    private act(action: Action, from?: WebSocket): boolean {
+        if (!this.state) {
+            return false;
         }
         const result = apply(this.state, action);
         if (!result.ok) {
             if (from) {
                 send(from, {type: "error", error: result.error});
             }
-            return;
+            return false;
         }
         this.saveState(result.state);
         this.broadcast(result.events);
+        return true;
     }
 
     private broadcast(events: GameEvent[]): void {
@@ -158,17 +204,38 @@ export class GameRoom {
         }
     }
 
+    private sendToAll(message: ServerMessage): void {
+        for (const ws of this.ctx.getWebSockets()) {
+            send(ws, message);
+        }
+    }
+
     private addChat(entry: ChatEntry): void {
         this.chat = [...this.chat, entry].slice(-CHAT_HISTORY_LIMIT);
         void this.ctx.storage.put("chat", this.chat);
+        this.sendToAll({type: "chat", ...entry});
+    }
+
+    private closeRoom(): void {
         for (const ws of this.ctx.getWebSockets()) {
-            send(ws, {type: "chat", ...entry});
+            closeQuietly(ws, "room closed");
         }
+        this.state = undefined;
+        this.tokens = {};
+        this.chat = [];
+        this.timers = NO_TIMERS;
+        void this.ctx.storage.deleteAlarm();
+        void this.ctx.storage.deleteAll();
     }
 
     private saveState(state: GameState): void {
         this.state = state;
         void this.ctx.storage.put("state", state);
+
+        const closesAt = closingTime(state, Date.now(), this.timers.closesAt);
+        if (closesAt !== this.timers.closesAt) {
+            this.saveTimers({...this.timers, closesAt});
+        }
         this.scheduleAlarm();
     }
 
@@ -177,8 +244,27 @@ export class GameRoom {
         void this.ctx.storage.put("tokens", tokens);
     }
 
+    private forgetTokens(playerId: PlayerId): void {
+        this.saveTokens(Object.fromEntries(Object.entries(this.tokens).filter(([, id]) => id !== playerId)));
+    }
+
+    private setDisconnected(playerId: PlayerId, at: number | null): void {
+        const disconnectedAt = Object.fromEntries(
+            Object.entries(this.timers.disconnectedAt).filter(([id]) => id !== playerId),
+        );
+        if (at !== null) {
+            disconnectedAt[playerId] = at;
+        }
+        this.saveTimers({...this.timers, disconnectedAt});
+    }
+
+    private saveTimers(timers: RoomTimers): void {
+        this.timers = timers;
+        void this.ctx.storage.put("timers", timers);
+    }
+
     private scheduleAlarm(): void {
-        const deadline = this.state ? nextDeadline(this.state) : null;
+        const deadline = this.state ? nextDeadline(this.state, this.timers) : null;
         if (deadline === null) {
             void this.ctx.storage.deleteAlarm();
         } else {
@@ -187,9 +273,28 @@ export class GameRoom {
     }
 }
 
+function isMember(state: GameState, playerId: PlayerId): boolean {
+    switch (state.phase) {
+        case "lobby":
+            return state.players.includes(playerId);
+        case "playing":
+            return state.players.some((p) => p.id === playerId);
+        case "finished":
+            return false;
+    }
+}
+
 function send(ws: WebSocket, message: ServerMessage): void {
     try {
         ws.send(JSON.stringify(message));
+    } catch {
+        return;
+    }
+}
+
+function closeQuietly(ws: WebSocket, reason: string): void {
+    try {
+        ws.close(1000, reason);
     } catch {
         return;
     }

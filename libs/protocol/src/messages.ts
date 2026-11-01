@@ -55,4 +55,5 @@ export type ServerMessage =
     | {type: "view"; view: PlayerView}
     | {type: "events"; events: GameEvent[]}
     | {type: "chat"; from: PlayerId; text: string}
+    | {type: "presence"; playerId: PlayerId; connected: boolean}
     | {type: "error"; error: ActionError | "invalidMessage"};
