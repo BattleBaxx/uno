@@ -1,13 +1,18 @@
 {
   "name": "@uno/protocol",
   "version": "1.0.0",
+  "exports": "./src/index.ts",
   "description": "",
-  "main": "index.js",
-  "devDependencies": {},
   "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@uno/engine": "*",
+    "zod": "^4.6.7"
+  }
 }

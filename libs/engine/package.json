@@ -1,8 +1,8 @@
 {
   "name": "@uno/engine",
   "version": "1.0.0",
+  "exports": "./src/index.ts",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p ."
