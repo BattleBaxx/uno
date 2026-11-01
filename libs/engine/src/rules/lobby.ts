@@ -1,8 +1,8 @@
-import type {LobbyState, Player, PlayerId, PlayingState, Settings} from "./state";
-import type {JoinAction, StartAction} from "./action";
-import {createDeck, shuffle} from "./cards/deck";
-import {nextRandom} from "./random";
-import {fail, ok, type Result} from "./result";
+import type {LobbyState, Player, PlayerId, PlayingState, Settings} from "../state";
+import type {JoinAction, StartAction} from "../action";
+import {createDeck, shuffle} from "../cards/deck";
+import {nextRandom} from "../cards/random";
+import {fail, ok, type Result} from "../result";
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;

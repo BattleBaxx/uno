@@ -12,7 +12,7 @@ export type Player = {
 type Direction = -1 | 1
 
 
-type UnoWindow = {
+export type UnoWindow = {
     playerId: PlayerId;
     // When the player got down to one card, in milliseconds since the Unix epoch
     openedAt: number;

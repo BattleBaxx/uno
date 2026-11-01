@@ -2,7 +2,6 @@ import type {GameState} from "./state";
 
 export type ActionError =
     | "wrongPhase"
-    | "notImplemented"
     | "invalidHandSize"
     | "alreadyJoined"
     | "roomFull"
@@ -13,7 +12,8 @@ export type ActionError =
     | "cardNotPlayable"
     | "colorRequired"
     | "alreadyDrawn"
-    | "mustDrawFirst";
+    | "mustDrawFirst"
+    | "notInGame";
 
 export type Result<S = GameState> =
     | {ok: true; state: S}

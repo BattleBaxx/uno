@@ -1,8 +1,8 @@
 import {describe, it, expect} from "vitest";
-import {apply} from "./apply";
+import {apply} from "../apply";
 import {createLobby, MAX_PLAYERS} from "./lobby";
-import type {Result} from "./result";
-import type {GameState, LobbyState, PlayingState} from "./state";
+import type {Result} from "../result";
+import type {GameState, LobbyState, PlayingState} from "../state";
 
 function unwrap<S>(result: Result<S>): S {
     if (!result.ok) {
@@ -136,12 +136,5 @@ describe("start", () => {
 
     it("deals a different game for a different seed", () => {
         expect(startedGame(["alice", "bob"], 7)).not.toEqual(startedGame(["alice", "bob"], 8));
-    });
-});
-
-describe("apply", () => {
-    it("reports actions that are not written yet", () => {
-        const game = startedGame(["alice", "bob"]);
-        expect(apply(game, {type: "callUno", playerId: "alice", now: 0})).toEqual({ok: false, error: "notImplemented"});
     });
 });

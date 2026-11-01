@@ -1,8 +1,9 @@
-import type {Card} from "./cards/card";
-import type {DrawAction, PassAction, PlayAction} from "./action";
-import type {Player, PlayingState} from "./state";
-import {shuffle} from "./cards/deck";
-import {fail, ok, type Result} from "./result";
+import type {Card} from "../cards/card";
+import type {DrawAction, PassAction, PlayAction} from "../action";
+import type {Player, PlayingState} from "../state";
+import {giveCards} from "../cards/piles";
+import {fail, ok, type Result} from "../result";
+import {hasOpenWindow, openWindow, penalize, UNO_PENALTY} from "./uno";
 
 export function play(state: PlayingState, action: PlayAction): Result {
     const player = currentPlayer(state);
@@ -25,6 +26,10 @@ export function play(state: PlayingState, action: PlayAction): Result {
 
     const hand = player.hand.filter((c) => c.id !== card.id);
     if (hand.length === 0) {
+        if (hasOpenWindow(state, player.id)) {
+            const penalized = penalize(state, [player.id], UNO_PENALTY + state.pendingDraw);
+            return ok(endTurn({...penalized, pendingDraw: 0}));
+        }
         return ok({phase: "finished", winner: player.id});
     }
 
@@ -33,6 +38,7 @@ export function play(state: PlayingState, action: PlayAction): Result {
         players: withCurrentHand(state, hand),
         discardPile: [...state.discardPile, card],
         currentColor: color,
+        unoWindows: hand.length === 1 ? openWindow(state, player.id, action.now) : state.unoWindows,
     };
 
     switch (card.kind) {
@@ -63,16 +69,11 @@ export function draw(state: PlayingState, action: DrawAction): Result {
     }
 
     if (state.pendingDraw > 0) {
-        const {cards, state: after} = takeCards(state, state.pendingDraw);
-        const hand = [...player.hand, ...cards];
-        return ok(endTurn({...after, pendingDraw: 0, players: withCurrentHand(after, hand)}));
+        return ok(endTurn({...giveCards(state, player.id, state.pendingDraw), pendingDraw: 0}));
     }
 
-    const {cards, state: after} = takeCards(state, 1);
-    const hand = [...player.hand, ...cards];
-    const drawn: PlayingState = {...after, hasDrawn: true, players: withCurrentHand(after, hand)};
-
-    const canPlay = hand.some((c) => isPlayable(c, drawn));
+    const drawn: PlayingState = {...giveCards(state, player.id, 1), hasDrawn: true};
+    const canPlay = currentPlayer(drawn).hand.some((c) => isPlayable(c, drawn));
     return ok(canPlay ? drawn : endTurn(drawn));
 }
 
@@ -120,26 +121,4 @@ function withCurrentHand(state: PlayingState, hand: Card[]): Player[] {
 
 function endTurn(state: PlayingState, steps = 1): PlayingState {
     return {...state, currentPlayerIndex: nextPlayerIndex(state, steps), hasDrawn: false};
-}
-
-function takeCards(state: PlayingState, count: number): {cards: Card[]; state: PlayingState} {
-    let drawPile = [...state.drawPile];
-    let discardPile = state.discardPile;
-    let rngState = state.rngState;
-    const cards: Card[] = [];
-
-    while (cards.length < count) {
-        if (drawPile.length === 0) {
-            if (discardPile.length <= 1) {
-                break;
-            }
-            const reshuffled = shuffle(discardPile.slice(0, -1), rngState);
-            drawPile = reshuffled.items;
-            rngState = reshuffled.rngState;
-            discardPile = discardPile.slice(-1);
-        }
-        cards.push(drawPile.pop()!);
-    }
-
-    return {cards, state: {...state, drawPile, discardPile, rngState}};
 }

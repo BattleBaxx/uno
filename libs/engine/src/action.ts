@@ -30,7 +30,7 @@ export type PassAction = {
     playerId: PlayerId;
 };
 
-type CallUnoAction = {
+export type CallUnoAction = {
     type: "callUno";
     playerId: PlayerId;
     now: number;
@@ -38,13 +38,13 @@ type CallUnoAction = {
 
 type PlayerAction = JoinAction | StartAction | PlayAction | DrawAction | PassAction | CallUnoAction;
 
-type UnoTimeoutAction = {
+export type UnoTimeoutAction = {
     type: "unoTimeout";
     playerId: PlayerId;
     now: number;
 }
 
-type RemovePlayerAction = {
+export type RemovePlayerAction = {
     type: "removePlayer";
     playerId: PlayerId;
 }

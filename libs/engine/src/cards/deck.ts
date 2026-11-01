@@ -1,5 +1,5 @@
 import type {Card, Color, NumberCard} from "./card";
-import {nextRandom} from "../random";
+import {nextRandom} from "./random";
 
 const COLORS: Color[] = ["red", "yellow", "green", "blue"];
 const ONE_TO_NINE: NumberCard["value"][] = [1, 2, 3, 4, 5, 6, 7, 8, 9];

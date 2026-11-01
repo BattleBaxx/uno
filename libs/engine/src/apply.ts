@@ -1,7 +1,9 @@
 import type {GameState} from "./state";
 import type {Action} from "./action";
-import {join, start} from "./lobby";
-import {draw, pass, play} from "./turn";
+import {join, start} from "./rules/lobby";
+import {draw, pass, play} from "./rules/turn";
+import {callUno, unoTimeout} from "./rules/uno";
+import {removePlayer} from "./rules/players";
 import {fail, type Result} from "./result";
 
 export function apply(state: GameState, action: Action): Result {
@@ -18,10 +20,12 @@ export function apply(state: GameState, action: Action): Result {
         case "pass":
             return state.phase === "playing" ? pass(state, action) : fail("wrongPhase");
 
-        // TODO: implemented in the next pieces.
         case "callUno":
+            return state.phase === "playing" ? callUno(state, action) : fail("wrongPhase");
         case "unoTimeout":
+            return state.phase === "playing" ? unoTimeout(state, action) : fail("wrongPhase");
+
         case "removePlayer":
-            return fail("notImplemented");
+            return state.phase === "finished" ? fail("wrongPhase") : removePlayer(state, action);
     }
 }
