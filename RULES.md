@@ -110,7 +110,7 @@ On your turn, do exactly one of:
 | The player types `uno` + Enter first | Safe. The window closes. |
 | Another player types `uno` first (after the 3 seconds) | The player draws a **4-card penalty**. |
 | Nobody calls it within 30 seconds | The player draws a **4-card penalty**. |
-| The player's turn comes up and they try to play their last card without having called | They draw a **4-card penalty** and **lose their turn**. You cannot win without calling UNO. |
+| The player's turn comes up and they try to play their last card without having called | The card is **not played** and stays in their hand. They draw a **4-card penalty** (plus any pending +2/+4 stack) and **lose their turn**. You cannot win without calling UNO. |
 
 The window also closes when a penalty is given, or if the player's hand goes above one card for any other reason.
 
@@ -135,9 +135,11 @@ Several UNO windows can be open at once. When a player types `uno`:
   - Their cards are **shuffled into the draw pile**.
   - They are **removed** from the turn order. If it was their turn, play passes to the next player.
   - If a penalty stack was waiting on them, it is **cleared**. It does not pass to the next player.
+- **In the lobby**, a player who doesn't reconnect within 30 seconds is removed from the lobby.
 - The **host**:
   - Before the room is created, a disconnect means no room is created.
   - After that, the host reconnects like any other player.
+  - If the host is removed from the lobby, the **next player in join order** becomes the host. If nobody is left, the room is closed.
 
 ## 11. Timers
 
