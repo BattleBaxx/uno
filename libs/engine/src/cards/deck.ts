@@ -1,4 +1,5 @@
 import type {Card, Color, NumberCard} from "./card";
+import {nextRandom} from "../random";
 
 const COLORS: Color[] = ["red", "yellow", "green", "blue"];
 const ONE_TO_NINE: NumberCard["value"][] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -26,4 +27,24 @@ export function createDeck(): Card[] {
     }
 
     return cards;
+}
+
+// Fisher–Yates shuffle.
+export function shuffle<T>(items: T[], rngState: number): {items: T[]; rngState: number} {
+    const result = [...items];
+    let state = rngState;
+
+    for (let i = result.length - 1; i > 0; i--) {
+        const random = nextRandom(state);
+        state = random.rngState;
+        const j = Math.floor(random.value * (i + 1));
+
+        // i and j are both within 0..length-1, so neither read can be undefined.
+        const atI = result[i]!;
+        const atJ = result[j]!;
+        result[i] = atJ;
+        result[j] = atI;
+    }
+
+    return {items: result, rngState: state};
 }
