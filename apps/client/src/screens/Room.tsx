@@ -7,6 +7,7 @@ import type {ClientState} from "../game/store";
 import {Sidebar} from "../ui/Sidebar";
 import type {TerminalSize} from "../ui/useTerminalSize";
 import {useNow} from "../ui/useNow";
+import {isSliding} from "../game/slide";
 import {GameOver} from "./GameOver";
 import {Lobby} from "./Lobby";
 import {PICKER_COLORS, Table} from "./Table";
@@ -40,7 +41,8 @@ export function Room({state, send, tier, size, onLeave}: Props) {
     }, [hand.length, state.notice]);
     const counting = state.view?.phase === "lobby" && state.view.startsAt !== null;
     const showingNotice = state.notice !== null && Date.now() - state.notice.at < NOTICE_MS;
-    const now = useNow(counting || showingNotice ? 250 : null);
+    const animating = isSliding(state.slide, Date.now());
+    const now = useNow(animating ? 30 : counting || showingNotice ? 250 : null);
 
     useInput((input, key) => {
         if (state.status === "closed") {
@@ -167,6 +169,8 @@ export function Room({state, send, tier, size, onLeave}: Props) {
                                 selected={selected}
                                 picking={picking}
                                 offline={state.offline}
+                                slide={state.slide}
+                                now={Date.now()}
                             />
                         ) : state.view?.phase === "finished" ? (
                             <GameOver view={state.view} showLogo={tier !== "small"} />

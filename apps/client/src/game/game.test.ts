@@ -132,6 +132,41 @@ describe("reduce", () => {
         expect(state.log).toEqual([{kind: "refused", text: "It's not your turn."}]);
     });
 
+    it("starts a card slide from the old top card when someone plays", () => {
+        const [oldTop, played] = createDeck();
+        const playing: PlayerView = {
+            phase: "playing",
+            you: "a",
+            names,
+            hand: [],
+            players: [],
+            currentPlayer: "b",
+            direction: 1,
+            topCard: oldTop!,
+            currentColor: "red",
+            pendingDraw: 0,
+            hasDrawn: false,
+            drawPileCount: 50,
+        };
+        let state = message(INITIAL_STATE, {type: "message", message: {type: "view", view: playing}, now: 0});
+        state = message(state, {
+            type: "message",
+            message: {type: "events", events: [{type: "played", playerId: "b", card: played!, color: "red"}]},
+            now: 500,
+        });
+        expect(state.slide).toEqual({card: played, playerId: "b", under: oldTop, startedAt: 500});
+    });
+
+    it("does not start a slide outside a running game", () => {
+        const [card] = createDeck();
+        const state = message(INITIAL_STATE, {
+            type: "message",
+            message: {type: "events", events: [{type: "played", playerId: "b", card: card!, color: "red"}]},
+            now: 0,
+        });
+        expect(state.slide).toBeNull();
+    });
+
     it("ignores refused actions once the game is over", () => {
         const finished = message(INITIAL_STATE, {
             type: "message",

@@ -30,7 +30,17 @@ const view = (overrides: Partial<PlayingView> = {}): PlayingView => ({
 
 const table = (overrides: Partial<PlayingView> = {}, picking: number | null = null) =>
     renderToString(
-        <Table view={view(overrides)} tier="medium" width={100} height={30} selected={0} picking={picking} offline={["c"]} />,
+        <Table
+            view={view(overrides)}
+            tier="medium"
+            width={100}
+            height={30}
+            selected={0}
+            picking={picking}
+            offline={["c"]}
+            slide={null}
+            now={0}
+        />,
         {columns: 100},
     );
 

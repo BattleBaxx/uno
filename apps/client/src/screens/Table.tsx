@@ -1,10 +1,12 @@
-import {Box, Text} from "ink";
-import type {Color, PlayerId} from "@uno/engine";
+import {useEffect, useRef, useState, type RefObject} from "react";
+import {Box, measureElement, Text, type DOMElement} from "ink";
+import type {Card, Color, PlayerId} from "@uno/engine";
 import type {PlayingView} from "@uno/protocol";
 import {cardFace} from "../art/card";
 import {layoutHand} from "../art/hand";
 import {CARD_SIZES, type CardSize, type Tier} from "../art/size";
 import {backStack, drawPile, seatsFor, stackWidth, type Seat} from "../art/table";
+import {isSliding, slidePosition, slideProgress, type Point, type Slide} from "../game/slide";
 import {CanvasView} from "../ui/CanvasView";
 
 export const PICKER_COLORS: Color[] = ["red", "yellow", "green", "blue"];
@@ -17,9 +19,11 @@ type Props = {
     selected: number;
     picking: number | null;
     offline: PlayerId[];
+    slide: Slide | null;
+    now: number;
 };
 
-export function Table({view, tier, width, height, selected, picking, offline}: Props) {
+export function Table({view, tier, width, height, selected, picking, offline, slide, now}: Props) {
     const size = CARD_SIZES[tier];
     const seats = seatsFor(
         view.players.map((p) => p.id),
@@ -27,6 +31,25 @@ export function Table({view, tier, width, height, selected, picking, offline}: P
     );
     const sideWidth = Math.max(stackWidth(size) + 2, Math.floor(width * 0.22));
     const hand = layoutHand(view.hand, selected, size, Math.max(size.width, width - 14));
+
+    const rootRef = useRef<DOMElement>(null);
+    const handRef = useRef<DOMElement>(null);
+    const pileRef = useRef<DOMElement>(null);
+    const seatRefs = {top: useRef<DOMElement>(null), left: useRef<DOMElement>(null), right: useRef<DOMElement>(null)};
+    const [path, setPath] = useState<{from: Point; to: Point; startedAt: number} | null>(null);
+    const sliding = isSliding(slide, now);
+
+    useEffect(() => {
+        if (!slide) {
+            setPath(null);
+            return;
+        }
+        const seat = (Object.keys(seats) as Seat[]).find((position) => seats[position] === slide.playerId);
+        const source = slide.playerId === view.you ? handRef : seat ? seatRefs[seat] : null;
+        const from = source ? cardSpot(source, rootRef, size) : null;
+        const to = cardSpot(pileRef, rootRef, size);
+        setPath(from && to ? {from, to, startedAt: slide.startedAt} : null);
+    }, [slide?.startedAt]);
 
     const seat = (position: Seat) => {
         const id = seats[position];
@@ -46,19 +69,24 @@ export function Table({view, tier, width, height, selected, picking, offline}: P
     };
 
     return (
-        <Box flexDirection="column" width={width} height={height} overflow="hidden">
+        <Box ref={rootRef} flexDirection="column" width={width} height={height} overflow="hidden">
             <Box justifyContent="center" minHeight={seats.top ? size.height + 1 : 0}>
-                {seat("top")}
+                <Box ref={seatRefs.top}>{seat("top")}</Box>
             </Box>
             <Box flexDirection="row" flexGrow={1} alignItems="center">
                 <Box width={sideWidth} justifyContent="center">
-                    {seat("left")}
+                    <Box ref={seatRefs.left}>{seat("left")}</Box>
                 </Box>
                 <Box flexGrow={1} justifyContent="center">
-                    <Center view={view} size={size} />
+                    <Center
+                        view={view}
+                        size={size}
+                        topCard={sliding ? slide.under : view.topCard}
+                        pileRef={pileRef}
+                    />
                 </Box>
                 <Box width={sideWidth} justifyContent="center">
-                    {seat("right")}
+                    <Box ref={seatRefs.right}>{seat("right")}</Box>
                 </Box>
             </Box>
             {picking !== null ? <ColorPicker selected={picking} /> : null}
@@ -66,15 +94,36 @@ export function Table({view, tier, width, height, selected, picking, offline}: P
                 <Box width={6} justifyContent="flex-end">
                     <Text color="gray">{hand.hiddenLeft > 0 ? `‹ ${hand.hiddenLeft}` : ""}</Text>
                 </Box>
-                <Box marginX={1}>
+                <Box marginX={1} ref={handRef}>
                     <CanvasView canvas={hand.canvas} />
                 </Box>
                 <Box width={6}>
                     <Text color="gray">{hand.hiddenRight > 0 ? `${hand.hiddenRight} ›` : ""}</Text>
                 </Box>
             </Box>
+            {sliding && path?.startedAt === slide.startedAt ? (
+                <Box position="absolute" {...toOffsets(slidePosition(path.from, path.to, slideProgress(slide, now)))}>
+                    <CanvasView canvas={cardFace(slide.card, size)} />
+                </Box>
+            ) : null}
         </Box>
     );
+}
+
+function cardSpot(target: RefObject<DOMElement | null>, root: RefObject<DOMElement | null>, size: CardSize): Point | null {
+    if (!target.current || !root.current) {
+        return null;
+    }
+    const box = measureElement(target.current);
+    const origin = measureElement(root.current);
+    return {
+        x: box.x - origin.x + Math.floor((box.width - size.width) / 2),
+        y: box.y - origin.y + Math.floor((box.height - size.height) / 2),
+    };
+}
+
+function toOffsets(point: Point): {left: number; top: number} {
+    return {left: point.x, top: point.y};
 }
 
 function SeatView({
@@ -105,7 +154,17 @@ function SeatView({
     );
 }
 
-function Center({view, size}: {view: PlayingView; size: CardSize}) {
+function Center({
+    view,
+    size,
+    topCard,
+    pileRef,
+}: {
+    view: PlayingView;
+    size: CardSize;
+    topCard: Card;
+    pileRef: RefObject<DOMElement | null>;
+}) {
     const yourTurn = view.currentPlayer === view.you;
     const turnName = yourTurn ? "your" : `${view.names[view.currentPlayer] ?? "someone"}'s`;
 
@@ -116,7 +175,9 @@ function Center({view, size}: {view: PlayingView; size: CardSize}) {
             </Text>
             <Box flexDirection="row" gap={4} marginTop={1}>
                 <Box flexDirection="column" alignItems="center">
-                    <CanvasView canvas={cardFace(view.topCard, size)} />
+                    <Box ref={pileRef}>
+                        <CanvasView canvas={cardFace(topCard, size)} />
+                    </Box>
                     <Text>
                         <Text color="gray">color </Text>
                         <Text backgroundColor={view.currentColor}>{"  "}</Text>

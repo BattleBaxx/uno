@@ -2,6 +2,7 @@ import type {GameEvent, PlayerId} from "@uno/engine";
 import type {Names, PlayerView, ServerMessage} from "@uno/protocol";
 import type {ConnectionStatus} from "../net/connection";
 import {errorText} from "./log";
+import type {Slide} from "./slide";
 
 export const LOG_LIMIT = 200;
 export const CHAT_LIMIT = 100;
@@ -22,6 +23,7 @@ export type ClientState = {
     chat: ChatLine[];
     offline: PlayerId[];
     notice: Notice | null;
+    slide: Slide | null;
 };
 
 export const INITIAL_STATE: ClientState = {
@@ -36,6 +38,7 @@ export const INITIAL_STATE: ClientState = {
     chat: [],
     offline: [],
     notice: null,
+    slide: null,
 };
 
 export type ClientEvent =
@@ -57,8 +60,15 @@ export function reduce(state: ClientState, event: ClientEvent): ClientState {
             return {...state, roomKey: message.roomKey, you: message.playerId, token: message.token, chat: []};
         case "view":
             return {...state, view: message.view, names: {...state.names, ...message.view.names}};
-        case "events":
-            return {...state, log: addToLog(state.log, message.events.map((event) => ({kind: "event", event})))};
+        case "events": {
+            const log = addToLog(state.log, message.events.map((event) => ({kind: "event", event})));
+            const played = [...message.events].reverse().find((e) => e.type === "played");
+            if (played?.type !== "played" || state.view?.phase !== "playing") {
+                return {...state, log};
+            }
+            const slide = {card: played.card, playerId: played.playerId, under: state.view.topCard, startedAt: event.now};
+            return {...state, log, slide};
+        }
         case "chat":
             return {...state, chat: [...state.chat, {from: message.from, text: message.text}].slice(-CHAT_LIMIT)};
         case "presence": {
