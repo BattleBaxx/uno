@@ -69,10 +69,12 @@ export function cardFace(card: Card, size: CardSize): Canvas {
     return canvas;
 }
 
-export function cardBack(size: CardSize): Canvas {
+export function cardBack(size: CardSize, labelled = true): Canvas {
     const canvas = frame(size, "gray", null);
-    const middle = size.height >= 5 ? Math.floor(size.height / 2) : 1;
-    write(canvas, Math.floor((size.width - 3) / 2), middle, "UNO", {color: "red", bold: true});
+    if (labelled) {
+        const middle = size.height >= 5 ? Math.floor(size.height / 2) : 1;
+        write(canvas, Math.floor((size.width - 3) / 2), middle, "UNO", {color: "red", bold: true});
+    }
     return canvas;
 }
 

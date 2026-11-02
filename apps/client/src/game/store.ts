@@ -7,6 +7,7 @@ export const LOG_LIMIT = 200;
 export const CHAT_LIMIT = 100;
 
 export type ChatLine = {from: PlayerId; text: string};
+export type LogEntry = {kind: "event"; event: GameEvent} | {kind: "refused"; text: string};
 export type Notice = {text: string; at: number};
 
 export type ClientState = {
@@ -17,7 +18,7 @@ export type ClientState = {
     token: string | null;
     view: PlayerView | null;
     names: Names;
-    log: GameEvent[];
+    log: LogEntry[];
     chat: ChatLine[];
     offline: PlayerId[];
     notice: Notice | null;
@@ -57,14 +58,23 @@ export function reduce(state: ClientState, event: ClientEvent): ClientState {
         case "view":
             return {...state, view: message.view, names: {...state.names, ...message.view.names}};
         case "events":
-            return {...state, log: [...state.log, ...message.events].slice(-LOG_LIMIT)};
+            return {...state, log: addToLog(state.log, message.events.map((event) => ({kind: "event", event})))};
         case "chat":
             return {...state, chat: [...state.chat, {from: message.from, text: message.text}].slice(-CHAT_LIMIT)};
         case "presence": {
             const offline = state.offline.filter((id) => id !== message.playerId);
             return {...state, offline: message.connected ? offline : [...offline, message.playerId]};
         }
-        case "error":
-            return {...state, notice: {text: errorText(message.error), at: event.now}};
+        case "error": {
+            if (state.view?.phase === "finished") {
+                return state;
+            }
+            const text = errorText(message.error);
+            return {...state, notice: {text, at: event.now}, log: addToLog(state.log, [{kind: "refused", text}])};
+        }
     }
+}
+
+function addToLog(log: LogEntry[], entries: LogEntry[]): LogEntry[] {
+    return [...log, ...entries].slice(-LOG_LIMIT);
 }

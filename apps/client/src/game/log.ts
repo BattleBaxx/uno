@@ -5,6 +5,14 @@ import type {Paint} from "../art/canvas";
 export type Part = {text: string; color?: Paint; bold?: boolean};
 export type LogLine = Part[];
 
+export function describeEntry(
+    entry: {kind: "event"; event: GameEvent} | {kind: "refused"; text: string},
+    names: Names,
+    you: PlayerId | null,
+): LogLine {
+    return entry.kind === "event" ? describeEvent(entry.event, names, you) : [{text: entry.text, color: "red"}];
+}
+
 export function describeEvent(event: GameEvent, names: Names, you: PlayerId | null): LogLine {
     const who = (id: PlayerId): Part => ({text: id === you ? "you" : (names[id] ?? "someone"), bold: true});
 

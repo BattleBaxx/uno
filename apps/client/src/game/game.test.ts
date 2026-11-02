@@ -92,7 +92,7 @@ describe("reduce", () => {
             now: 0,
         });
         state = message(state, {type: "message", message: {type: "chat", from: "b", text: "hi"}, now: 0});
-        expect(state.log).toEqual([{type: "joined", playerId: "b"}]);
+        expect(state.log).toEqual([{kind: "event", event: {type: "joined", playerId: "b"}}]);
         expect(state.chat).toEqual([{from: "b", text: "hi"}]);
     });
 
@@ -126,9 +126,21 @@ describe("reduce", () => {
         expect(state.offline).toEqual([]);
     });
 
-    it("shows errors as a timed notice", () => {
+    it("shows errors as a timed notice, and keeps them in the log", () => {
         const state = message(INITIAL_STATE, {type: "message", message: {type: "error", error: "notYourTurn"}, now: 42});
         expect(state.notice).toEqual({text: "It's not your turn.", at: 42});
+        expect(state.log).toEqual([{kind: "refused", text: "It's not your turn."}]);
+    });
+
+    it("ignores refused actions once the game is over", () => {
+        const finished = message(INITIAL_STATE, {
+            type: "message",
+            message: {type: "view", view: {phase: "finished", you: "a", names, winner: "b"}},
+            now: 0,
+        });
+        const state = message(finished, {type: "message", message: {type: "error", error: "wrongPhase"}, now: 5});
+        expect(state.notice).toBeNull();
+        expect(state.log).toEqual([]);
     });
 
     it("tracks the connection status and why it closed", () => {
