@@ -82,9 +82,7 @@ export function draw(state: PlayingState, action: DrawAction): Result {
     }
 
     const drawn: PlayingState = {...giveCards(state, player.id, 1), hasDrawn: true};
-    const canPlay = currentPlayer(drawn).hand.some((c) => isPlayable(c, drawn));
-    const events = [drewEvent(state, drawn, player.id, "choice")];
-    return ok(canPlay ? drawn : endTurn(drawn), events);
+    return ok(drawn, [drewEvent(state, drawn, player.id, "choice")]);
 }
 
 export function pass(state: PlayingState, action: PassAction): Result {

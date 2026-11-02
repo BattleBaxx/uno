@@ -71,7 +71,7 @@ On your turn, do exactly one of:
 - **Play** a playable card, or
 - **Draw** one card. You may draw even if you hold a playable card.
   - After drawing, you may **play any playable card** from your hand (not only the drawn one), or **pass**. You cannot draw again.
-  - If you have no playable card after drawing, your **turn ends** automatically.
+  - Your turn never ends on its own after drawing, even with nothing playable. You always pass yourself, so other players can't tell whether you could have played.
   - If you pass, your **turn ends**.
 
 ## 5. Action Cards

@@ -263,12 +263,13 @@ describe("draw", () => {
         expect(after.currentPlayerIndex).toBe(0);
     });
 
-    it("ends the turn automatically when nothing is playable after drawing", () => {
+    it("keeps the turn after drawing even when nothing is playable, so others can't tell", () => {
         const state = game({players: [{id: "alice", hand: [num(3, "yellow", 9)]}, ...game().players.slice(1)]});
         const after = unwrap(apply(state, {type: "draw", playerId: "alice"}));
         expect(handIds(after, 0)).toEqual([3, 92]);
-        expect(after.currentPlayerIndex).toBe(1);
-        expect(after.hasDrawn).toBe(false);
+        expect(after.currentPlayerIndex).toBe(0);
+        expect(after.hasDrawn).toBe(true);
+        expect(apply(after, {type: "pass", playerId: "alice"}).ok).toBe(true);
     });
 
     it("lets the player play any playable card after drawing", () => {
